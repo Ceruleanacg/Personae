@@ -53,5 +53,5 @@ class Stock(Document):
 
     @classmethod
     def get_k_data(cls, code, start, end):
-        return cls.objects(code=code, date__gte=start, date__lte=end)
+        return cls.objects(code=code, date__gte=start, date__lte=end).order_by('date')
 

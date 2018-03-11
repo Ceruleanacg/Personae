@@ -5,33 +5,51 @@ import random
 import math
 
 from base.model.finance import Stock
+from enum import Enum
 
 
 logging.basicConfig(level=logging.INFO)
 
+
+class MarketStatus(Enum):
+    Running = 0
+    NotRunning = 1
+
+
 class Market(object):
 
     def __init__(self, codes, start_date="2008-01-01", end_date="2018-01-01"):
-        self.codes = codes
-        self.cursor = 0
-        self.stocks_data_map = dict()
 
+        # Initialize vars.
+        self.codes = codes
+        self.dates = []
+        self.date_index = 0
+        self.code_date_map = dict()
+
+        # Build code - date - stock map.
         for code in self.codes:
             stocks = Stock.get_k_data(code, start_date, end_date)
-            self.stocks_data_map[code] = stocks
-
-        self.cursor_max = min([len(stocks) for stocks in self.stocks_data_map.values()])
+            date_stock_map = dict()
+            for stock in stocks:
+                date_stock_map[stock.date] = stock
+                if stock.date not in self.dates:
+                    self.dates.append(stock.date)
+                self.code_date_map[code] = date_stock_map
 
     def get_stock_data(self, code):
         try:
-            stocks_data = self.stocks_data_map[code]
-            return stocks_data[self.cursor]
+            date_stock_map = self.code_date_map[code]
+            return date_stock_map[self.dates[self.date_index]]
         except KeyError:
-            logging.info("Code: {}, not exists in Market.".format(code))
-            return None
+            logging.info("Code: {}, not exists in Market on Date: {}.".format(code, self.dates[self.date_index]))
+            raise ValueError
 
     def forward(self):
-        self.cursor += 1 if self.cursor < self.cursor_max else self.cursor
+        if self.date_index < len(self.dates):
+            self.date_index += 1
+            return MarketStatus.Running
+        else:
+            return MarketStatus.NotRunning
 
 
 class Position(object):
@@ -72,7 +90,10 @@ class Trader(object):
     def buy(self, code, amount):
 
         # Get current stock data.
-        stock = self.market.get_stock_data(code)
+        try:
+            stock = self.market.get_stock_data(code)
+        except ValueError:
+            return
 
         # Check if position exists.
         if not self._exist_position(code):
@@ -103,7 +124,10 @@ class Trader(object):
             return logging.info("Code: {}, not exists in Positions.".format(code))
 
         # Get current stock data.
-        stock = self.market.get_stock_data(code)
+        try:
+            stock = self.market.get_stock_data(code)
+        except ValueError:
+            return
 
         # Sell position if possible.
         position = self._get_position(code)
@@ -128,20 +152,20 @@ class Trader(object):
 
 
 def main():
-    codes = ["600036"]
+    codes = ["600036", "601998"]
     market = Market(codes)
     trader = Trader(market)
     actions = [trader.buy, trader.sell, trader.hold]
 
-    for cursor in range(market.cursor_max):
-
+    while True:
         code = random.choice(codes)
         action = random.choice(actions)
         action(code, random.randint(100, 200))
 
         logging.info("Cash: {} | Holdings: {}".format(trader.cash, trader.holdings))
 
-        market.forward()
+        if market.forward() == MarketStatus.NotRunning:
+            break
 
 
 if __name__ == '__main__':
