@@ -215,12 +215,12 @@ def main():
 
         code_index, action_index = random.choice(range(trader.codes_count)), random.choice(range(trader.action_space))
 
-        market_status = market.forward(trader, [code_index, action_index])
+        # market_status = market.forward(trader, [code_index, action_index])
 
         trader.log_asset()
 
-        if market_status == MarketStatus.NotRunning:
-            break
+        # if market_status == MarketStatus.NotRunning:
+        #     break
 
 
 if __name__ == '__main__':
