@@ -25,94 +25,101 @@ class Market(object):
         self.dates = []
         self.trader = Trader(self)
         self.data_dim = None
-        self.code_date_map = dict()
+        self.date_stocks_map = dict()
+        self.current_date = None
 
         if not len(self.codes):
             raise ValueError("Initialize, codes cannot be empty.")
 
-        # Build code - date - stock map.
         for code in self.codes:
+            # Get stocks date by code.
             stocks = Stock.get_k_data(code, start_date, end_date)
             if not self.data_dim:
+                # Init date dim.
                 self.data_dim = self._get_data_dim(stocks.first())
-            date_stock_map = dict()
+            # Init date - stock map.
             for stock in stocks:
-                date_stock_map[stock.date] = stock
                 if stock.date not in self.dates:
                     self.dates.append(stock.date)
-            self.code_date_map[code] = date_stock_map
+                try:
+                    stocks_data = self.date_stocks_map[stock.date]
+                    stocks_data.append(stock)
+                except KeyError:
+                    stocks_data = [stock]
+                    self.date_stocks_map[stock.date] = stocks_data
+
+        for index, date in enumerate(self.date_stocks_map):
+            stocks = self.date_stocks_map[date]
+            if len(stocks) != len(self.codes):
+                last_valid_stocks = self._get_last_valid_stocks_data(index)
+                for stock in last_valid_stocks:
+                    if stock.code not in stocks:
+                        stocks.append(stock)
 
         self.dates = sorted(self.dates)
         self.iter_dates = iter(self.dates)
 
+    def get_cur_stock_data(self, code_index):
+        # stocks_data will never be None or [].
+        stocks_data = self.date_stocks_map[self.current_date]
         try:
-            self.current_date = next(self.iter_dates)
-        except StopIteration:
-            raise ValueError("Initialize failed, dates is empty.")
-
-    def get_cur_stock_data(self, code):
-        date_stock_map = self.code_date_map[code]
-        try:
-            return date_stock_map[self.current_date]
-        except KeyError:
-            logging.info("Code: {}, not exists in Market on Date: {}.".format(code, self.current_date))
-            raise ValueError
+            return stocks_data[code_index]
+        except IndexError:
+            code = self.codes[code_index]
+            raise IndexError("Code: {}, not exists in Market on Date: {}.".format(code, self.current_date))
 
     def reset(self):
         self.trader.reset()
         self.iter_dates = iter(self.dates)
+        try:
+            self.current_date = next(self.iter_dates)
+        except StopIteration:
+            raise ValueError("Initialize failed, dates is empty.")
+        return self.state
 
-    def forward(self, action_sheet):
-
+    def forward(self, action_indices):
         # Check trader.
         if not self.trader:
             raise ValueError("Trader cannot be None.")
 
-        # Here, action_sheet is like: [0, 1]
-        code, action = self.trader.codes[action_sheet[0]], self.trader.actions[action_sheet[1]]
+        # Here, action_sheet is like: [0, 1, ..., 1, 2]
+        for index, code in enumerate(self.codes):
+            # Get Stock for current date with code.
+            action_index = action_indices[index]
+            action = self.trader.actions[action_index]
+            try:
+                stock = self.get_cur_stock_data(index)
+                action(stock, 100)
+            except IndexError:
+                logging.info("Current date cannot trade for code: {}.".format(code))
 
-        # Get Stock for current date with code.
-        try:
-            stock = self.get_cur_stock_data(code)
-            action(stock, 100)
-        except ValueError:
-            logging.info("Buying {} failed, current date cannot trade.".format(code))
-
+        # Update and return the next state.
         try:
             self.current_date = next(self.iter_dates)
-            stock_next = self.get_cur_stock_data(code)
-            return stock_next, self.trader.profits, MarketStatus.Running, "Running."
+            return self.state, self.trader.profits, MarketStatus.Running, "Running."
         except StopIteration:
             return None, self.trader.profits, MarketStatus.NotRunning, "Not Running."
 
-    @staticmethod
-    def _get_data_dim(stock):
-        stock = stock.to_mongo()
-        stock.pop('date')
-        stock.pop('_id')
-        stock.pop('code')
-        return len(stock.keys())
+    @property
+    def state(self):
+        stocks = [stock.to_state() for stock in self.date_stocks_map[self.current_date]]
+        return stocks
 
+    def _get_data_dim(self, stock):
+        return len(self.codes), len(stock.to_state())
 
-class Position(object):
-
-    def __init__(self, code, buy_price, amount):
-        self.code = code
-        self.amount = amount
-        self.buy_price = buy_price
-        self.cur_price = buy_price
-        self.holding_value = self.cur_price * self.amount
-
-    def add(self, buy_price, amount):
-        self.buy_price = (self.amount * self.buy_price + amount * buy_price) / (self.amount + amount)
-        self.cur_price = buy_price
-        self.amount += amount
-        self.holding_value = self.cur_price * self.amount
-
-    def sub(self, sell_price, amount):
-        self.cur_price = sell_price
-        self.amount -= amount
-        self.holding_value = self.cur_price * self.amount
+    def _get_last_valid_stocks_data(self, index):
+        _index = index - 1
+        try:
+            date = list(self.date_stocks_map.keys())[_index]
+        except IndexError:
+            _index = index + 1
+            date = list(self.date_stocks_map.keys())[_index]
+        stocks = self.date_stocks_map[date]
+        if len(stocks) == len(self.codes):
+            return stocks
+        else:
+            return self._get_last_valid_stocks_data(_index)
 
 
 class Trader(object):
@@ -169,12 +176,6 @@ class Trader(object):
 
         position = self._get_position(stock.code)
 
-        # Get current stock data.
-        try:
-            stock = self.market.get_cur_stock_data(stock.code)
-        except ValueError:
-            return logging.info("Selling {} failed, current date cannot trade.".format(stock.code))
-
         # Sell position if possible.
         amount = amount if amount < position.amount else position.amount
         position.sub(stock.close, amount)
@@ -185,8 +186,7 @@ class Trader(object):
         # Update cash and holding price.
         self.cash += amount * stock.close
 
-    @staticmethod
-    def hold(stock, _):
+    def hold(self, stock, _):
         pass
 
     def reset(self):
@@ -205,22 +205,43 @@ class Trader(object):
         return [position for position in self.positions if position.code == code][0]
 
 
+class Position(object):
+
+    def __init__(self, code, buy_price, amount):
+        self.code = code
+        self.amount = amount
+        self.buy_price = buy_price
+        self.cur_price = buy_price
+        self.holding_value = self.cur_price * self.amount
+
+    def add(self, buy_price, amount):
+        self.buy_price = (self.amount * self.buy_price + amount * buy_price) / (self.amount + amount)
+        self.cur_price = buy_price
+        self.amount += amount
+        self.holding_value = self.cur_price * self.amount
+
+    def sub(self, sell_price, amount):
+        self.cur_price = sell_price
+        self.amount -= amount
+        self.holding_value = self.cur_price * self.amount
+
+
 def main():
 
     codes = ["600036", "601998"]
     market = Market(codes)
-    trader = Trader(market)
+    market.reset()
 
     while True:
 
-        code_index, action_index = random.choice(range(trader.codes_count)), random.choice(range(trader.action_space))
+        actions_indices = [random.choice(range(market.trader.action_space)) for _ in codes]
 
-        # market_status = market.forward(trader, [code_index, action_index])
+        s_next, r, status, info = market.forward(actions_indices)
 
-        trader.log_asset()
+        market.trader.log_asset()
 
-        # if market_status == MarketStatus.NotRunning:
-        #     break
+        if status == MarketStatus.NotRunning:
+            break
 
 
 if __name__ == '__main__':

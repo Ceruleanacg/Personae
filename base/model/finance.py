@@ -51,6 +51,13 @@ class Stock(Document):
     def save_if_need(self):
         return self.save() if len(self.__class__.objects(code=self.code, date=self.date)) < 1 else None
 
+    def to_state(self):
+        stock_dic = self.to_mongo()
+        stock_dic.pop('_id')
+        stock_dic.pop('code')
+        stock_dic.pop('date')
+        return stock_dic.values()
+
     @classmethod
     def get_k_data(cls, code, start, end):
         return cls.objects(code=code, date__gte=start, date__lte=end).order_by('date')
