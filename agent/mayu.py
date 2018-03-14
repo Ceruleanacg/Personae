@@ -18,7 +18,7 @@ class Algorithm(object):
         self.learning_rate, self.gamma, self.tau = learning_rate, gamma, tau
 
         # Initialize evn parameters.
-        self.a_space, self.s_space, self.a_upper_bound = a_space, s_space, a_upper_bound
+        self.a_space, self.s_space, self.a_upper_bound = a_space, s_space[0] * s_space[1], a_upper_bound
 
         try:
             self.batch_size = options['batch_size']
@@ -31,7 +31,7 @@ class Algorithm(object):
             self.buffer_size = 10000
 
         # Initialize buffer.
-        self.buffer = [{}] * self.buffer_size
+        self.buffer = np.zeros((self.buffer_size, self.s_space * 2 + self.a_space + 1))
         self.buffer_length = 0
 
         self._init_input()
@@ -39,9 +39,9 @@ class Algorithm(object):
         self._init_op()
 
     def _init_input(self):
-        self.s = tf.placeholder(tf.float32, [None, self.s_space[0], self.s_space[1]], 'state')
+        self.s = tf.placeholder(tf.float32, [None, self.s_space], 'state')
         self.r = tf.placeholder(tf.float32, [None, 1], 'reward')
-        self.s_next = tf.placeholder(tf.float32, [None, self.s_space[0], self.s_space[1]], 'state_next')
+        self.s_next = tf.placeholder(tf.float32, [None, self.s_space], 'state_next')
 
     def _init_nn(self):
         # Initialize predict actor and critic.
@@ -78,23 +78,20 @@ class Algorithm(object):
 
     def predict_action(self, s):
         a = self.session.run(self.a_predict, {self.s: [s]})
-        return a[0]
+        return a
 
     def get_transition_batch(self):
         indices = np.random.choice(self.buffer_size, size=self.batch_size)
-        batch_dic = self.buffer[indices]
-        s = batch_dic['s']
-        a = batch_dic['a']
-        r = batch_dic['r']
-        s_next = batch_dic['s_next']
+        batch = self.buffer[indices, :]
+        s = batch[:, :self.s_space]
+        a = batch[:, self.s_space: self.s_space + self.a_space]
+        r = batch[:, -self.s_space - 1: -self.s_space]
+        s_next = batch[:, -self.s_space:]
         return s, a, r, s_next
 
     def save_transition(self, s, a, r, s_next):
-        index = self.buffer_length % self.buffer_size
-        self.buffer[index]['s'] = s
-        self.buffer[index]['a'] = a
-        self.buffer[index]['r'] = r
-        self.buffer[index]['s_next'] = s_next
+        transition = np.hstack((s, a[0], [r], s_next))
+        self.buffer[self.buffer_length % self.buffer_size, :] = transition
         self.buffer_length += 1
 
     def __build_actor_nn(self, state, scope, trainable=True):
@@ -102,7 +99,7 @@ class Algorithm(object):
         w_init, b_init = tf.random_normal_initializer(.0, .3), tf.constant_initializer(.1)
 
         with tf.variable_scope(scope):
-
+            # state is ? * code_count * data_dim.
             phi_state = tf.layers.dense(state,
                                         30,
                                         tf.nn.relu,
@@ -112,7 +109,7 @@ class Algorithm(object):
 
             action_prob = tf.layers.dense(phi_state,
                                           self.a_space,
-                                          tf.nn.sigmoid,
+                                          tf.nn.tanh,
                                           kernel_initializer=w_init,
                                           bias_initializer=b_init,
                                           trainable=trainable)
@@ -201,15 +198,15 @@ def run_market():
         s = market.reset()
         while True:
             a = agent.predict_action(s)
-            a_indices = np.argmax(a, axis=1).astype(np.int32)
+            a_indices = np.where(a > 1 / 3, 1, np.where(a < - 1 / 3, -1, 0)).astype(np.int32)[0].tolist()
             s_next, r, status, info = market.forward(a_indices)
+            if status == MarketStatus.NotRunning:
+                trader.log_asset()
+                break
             agent.save_transition(s, a, r, s_next)
             if agent.buffer_length >= agent.buffer_size:
                 agent.train()
             s = s_next
-            if status == MarketStatus.NotRunning:
-                trader.log_asset()
-                break
 
 
 if __name__ == '__main__':

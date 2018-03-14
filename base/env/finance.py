@@ -8,7 +8,7 @@ from base.model.finance import Stock
 from enum import Enum
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 
 class MarketStatus(Enum):
@@ -18,15 +18,16 @@ class MarketStatus(Enum):
 
 class Market(object):
 
-    def __init__(self, codes, start_date="2008-01-01", end_date="2018-01-01"):
+    def __init__(self, codes, start_date="2008-01-01", end_date="2018-01-01", use_one_hot=True):
 
         # Initialize vars.
         self.codes = codes
         self.dates = []
         self.trader = Trader(self)
         self.data_dim = None
-        self.date_stocks_map = dict()
+        self.use_one_hot = use_one_hot
         self.current_date = None
+        self.date_stocks_map = dict()
 
         if not len(self.codes):
             raise ValueError("Initialize, codes cannot be empty.")
@@ -53,7 +54,8 @@ class Market(object):
             if len(stocks) != len(self.codes):
                 last_valid_stocks = self._get_last_valid_stocks_data(index)
                 for stock in last_valid_stocks:
-                    if stock.code not in stocks:
+                    if stock.code not in [s.code for s in stocks]:
+                        # TODO - Order.
                         stocks.append(stock)
 
         self.dates = sorted(self.dates)
@@ -77,7 +79,7 @@ class Market(object):
             raise ValueError("Initialize failed, dates is empty.")
         return self.state
 
-    def forward(self, action_indices):
+    def forward(self, action_keys):
         # Check trader.
         if not self.trader:
             raise ValueError("Trader cannot be None.")
@@ -85,8 +87,8 @@ class Market(object):
         # Here, action_sheet is like: [0, 1, ..., 1, 2]
         for index, code in enumerate(self.codes):
             # Get Stock for current date with code.
-            action_index = action_indices[index]
-            action = self.trader.actions[action_index]
+            action_key = action_keys[index]
+            action = self.trader.action_dic[action_key]
             try:
                 stock = self.get_cur_stock_data(index)
                 action(stock, 100)
@@ -96,14 +98,20 @@ class Market(object):
         # Update and return the next state.
         try:
             self.current_date = next(self.iter_dates)
-            return self.state, self.trader.profits, MarketStatus.Running, "Running."
+            return self.state, self.trader.profits, MarketStatus.Running, 0
         except StopIteration:
-            return None, self.trader.profits, MarketStatus.NotRunning, "Not Running."
+            return None, self.trader.profits, MarketStatus.NotRunning, -1
 
     @property
     def state(self):
         stocks = [stock.to_state() for stock in self.date_stocks_map[self.current_date]]
-        return stocks
+        if self.use_one_hot:
+            stock_one_hot = stocks[0]
+            for stock in stocks[1:]:
+                stock_one_hot.extend(stock)
+            return stock_one_hot
+        else:
+            return stocks
 
     def _get_data_dim(self, stock):
         return len(self.codes), len(stock.to_state())
@@ -124,13 +132,17 @@ class Market(object):
 
 class Trader(object):
 
+    ActionBuy = 1
+    ActionHold = 0
+    ActionSell = -1
+
     def __init__(self, market, cash=100000.0):
         self.cash = cash
         self.codes = market.codes
         self.market = market
         self.positions = []
         self.initial_cash = cash
-        self.actions = [self.buy, self.sell, self.hold]
+        self.action_dic = {Trader.ActionBuy: self.buy, Trader.ActionHold: self.hold, Trader.ActionSell: self.sell}
 
     @property
     def codes_count(self):
@@ -138,7 +150,7 @@ class Trader(object):
 
     @property
     def action_space(self):
-        return len(self.actions)
+        return self.codes_count
 
     @property
     def holdings_value(self):
@@ -194,9 +206,9 @@ class Trader(object):
         self.positions = []
 
     def log_asset(self):
-        logging.info("Cash: {0:.2f} | "
-                     "Holdings: {1:.2f} | "
-                     "Profits: {2:.2f}".format(self.cash, self.holdings_value, self.profits))
+        logging.warning("Cash: {0:.2f} | "
+                        "Holdings: {1:.2f} | "
+                        "Profits: {2:.2f}".format(self.cash, self.holdings_value, self.profits))
 
     def _exist_position(self, code):
         return True if len([position.code for position in self.positions if position.code == code]) else False
