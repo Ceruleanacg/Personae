@@ -2,14 +2,11 @@
 
 import tensorflow as tf
 import numpy as np
-import gym
-
-from base.env.finance import Market, Trader, MarketStatus
 
 
 class Algorithm(object):
 
-    def __init__(self, session, a_space, s_space, a_upper_bound, learning_rate=0.001, gamma=0.9, tau=0.01, **options):
+    def __init__(self, session, a_space, s_space, learning_rate=0.001, gamma=0.9, tau=0.01, **options):
 
         # Initialize session.
         self.session = session
@@ -18,7 +15,7 @@ class Algorithm(object):
         self.learning_rate, self.gamma, self.tau = learning_rate, gamma, tau
 
         # Initialize evn parameters.
-        self.a_space, self.s_space, self.a_upper_bound = a_space, s_space[0] * s_space[1], a_upper_bound
+        self.a_space, self.s_space = a_space, s_space
 
         try:
             self.batch_size = options['batch_size']
@@ -76,6 +73,12 @@ class Algorithm(object):
         self.session.run(self.a_train_op, {self.s: s})
         self.session.run(self.c_train_op, {self.s: s, self.a_predict: a, self.r: r, self.s_next: s_next})
 
+    def train_if_need(self):
+        if self.buffer_length >= self.buffer_size:
+            return self.train()
+        else:
+            return
+
     def predict_action(self, s):
         a = self.session.run(self.a_predict, {self.s: s})
         return a
@@ -101,7 +104,7 @@ class Algorithm(object):
         with tf.variable_scope(scope):
             # state is ? * code_count * data_dim.
             phi_state = tf.layers.dense(state,
-                                        30,
+                                        50,
                                         tf.nn.relu,
                                         kernel_initializer=w_init,
                                         bias_initializer=b_init,
@@ -115,7 +118,7 @@ class Algorithm(object):
                                           trainable=trainable)
 
             # But why?
-            return tf.multiply(action_prob, self.a_upper_bound)
+            return action_prob
 
     @staticmethod
     def __build_critic(state, action, scope, trainable=True):
@@ -125,13 +128,13 @@ class Algorithm(object):
         with tf.variable_scope(scope):
 
             phi_state = tf.layers.dense(state,
-                                        30,
+                                        50,
                                         kernel_initializer=w_init,
                                         bias_initializer=b_init,
                                         trainable=trainable)
 
             phi_action = tf.layers.dense(action,
-                                         30,
+                                         50,
                                          kernel_initializer=w_init,
                                          bias_initializer=b_init,
                                          trainable=trainable)
@@ -143,30 +146,3 @@ class Algorithm(object):
                                       trainable=trainable)
 
             return q_value
-
-
-def run_market():
-
-    codes = ["600036", "601998"]
-    market = Market(codes)
-    trader = Trader(market)
-
-    agent = Algorithm(tf.Session(), trader.action_space, market.data_dim, a_upper_bound=1.0)
-
-    for episode in range(200):
-        s = market.reset()
-        while True:
-            a = agent.predict_action(s)
-            a_indices = np.where(a > 1 / 3, 1, np.where(a < - 1 / 3, -1, 0)).astype(np.int32)[0].tolist()
-            s_next, r, status, info = market.forward(a_indices)
-            if status == MarketStatus.NotRunning:
-                trader.log_asset()
-                break
-            agent.save_transition(s, a, r, s_next)
-            if agent.buffer_length >= agent.buffer_size:
-                agent.train()
-            s = s_next
-
-
-if __name__ == '__main__':
-    run_market()

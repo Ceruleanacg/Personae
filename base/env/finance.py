@@ -20,7 +20,7 @@ class MarketStatus(Enum):
 
 class Market(object):
 
-    def __init__(self, codes, start_date="2008-01-01", end_date="2018-01-01", use_one_hot=True, use_normalized=True):
+    def __init__(self, codes, start_date="2008-01-01", end_date="2018-01-01", **options):
 
         self.codes = codes
         self.dates = []
@@ -34,8 +34,20 @@ class Market(object):
         self.data_dim = None
         self.current_date = None
 
-        self.use_one_hot = use_one_hot
-        self.use_normalized = use_normalized
+        try:
+            self.use_one_hot = options['use_one_hot']
+        except KeyError:
+            self.use_one_hot = True
+
+        try:
+            self.use_normalized = options['use_normalized']
+        except KeyError:
+            self.use_normalized = True
+
+        try:
+            self.use_state_mix_cash = options['state_mix_cash']
+        except KeyError:
+            self.use_state_mix_cash = True
 
         self._init_stocks_data(start_date, end_date)
         self._init_date_stocks_map()
@@ -91,12 +103,6 @@ class Market(object):
                 except ValueError:
                     self._fill_stop_date_data(date, pair_index)
 
-    def _fill_stop_date_data(self, date, stock_index):
-        index = list(self.date_states_map.keys()).index(date)
-        last_valid_stocks = self._get_last_valid_stocks_data(index)
-        stocks_list = self.date_states_map[date]
-        stocks_list.insert(stock_index, last_valid_stocks[stock_index])
-
     def get_cur_stock_data(self, code):
         return self.date_stocks_map[self.current_date][code]
 
@@ -128,17 +134,34 @@ class Market(object):
         # Update and return the next state.
         try:
             self.current_date = next(self.iter_dates)
-            return self.state, self.trader.profits, MarketStatus.Running, 0
+            return self.state, self.trader.reward, MarketStatus.Running, 0
         except StopIteration:
-            return None, self.trader.profits, MarketStatus.NotRunning, -1
+            return self.state, self.trader.reward, MarketStatus.NotRunning, -1
 
     @property
     def state(self):
         stocks = np.array([stock for stock in self.date_states_map[self.current_date]])
-        return stocks if not self.use_one_hot else stocks.reshape((1, -1))
+        if self.use_one_hot:
+            stocks = stocks.reshape((1, -1))
+            if self.use_state_mix_cash:
+                stocks = np.insert(stocks, 0, self.trader.cash / self.trader.initial_cash, axis=1)
+                stocks = np.insert(stocks, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
+        return stocks
+
+    def _fill_stop_date_data(self, date, stock_index):
+        index = list(self.date_states_map.keys()).index(date)
+        last_valid_stocks = self._get_last_valid_stocks_data(index)
+        stocks_list = self.date_states_map[date]
+        stocks_list.insert(stock_index, last_valid_stocks[stock_index])
 
     def _get_data_dim(self, stock):
-        return len(self.codes), len(stock.to_state())
+        if self.use_one_hot:
+            data_dim = len(self.codes) * len(stock.to_state())
+            if self.use_state_mix_cash:
+                data_dim += 2
+        else:
+            data_dim = len(self.codes) * len(stock.to_state())
+        return data_dim
 
     def _get_last_valid_stocks_data(self, index):
         _index = index - 1
@@ -164,7 +187,9 @@ class Trader(object):
         self.cash = cash
         self.codes = market.codes
         self.market = market
+        self.profits = 0
         self.positions = []
+        self.last_profits = 0
         self.initial_cash = cash
         self.action_dic = {Trader.ActionBuy: self.buy, Trader.ActionHold: self.hold, Trader.ActionSell: self.sell}
 
@@ -184,8 +209,14 @@ class Trader(object):
         return holdings_value
 
     @property
-    def profits(self):
-        return self.holdings_value + self.cash - self.initial_cash
+    def reward(self):
+        floating_profits = self.profits - self.last_profits
+        if floating_profits > 0:
+            return 10
+        elif floating_profits == 0:
+            return -1
+        else:
+            return -5
 
     def buy(self, stock, amount):
 
@@ -206,6 +237,7 @@ class Trader(object):
 
         # Update cash and holding price.
         self.cash -= amount * stock.close
+        self._update_profits()
 
     def sell(self, stock, amount):
 
@@ -224,18 +256,27 @@ class Trader(object):
 
         # Update cash and holding price.
         self.cash += amount * stock.close
+        self._update_profits()
 
-    def hold(self, stock, _):
-        pass
+    def hold(self, stock, amount):
+        self._update_profits()
 
     def reset(self):
         self.cash = self.initial_cash
         self.positions = []
+        self.profits = 0
+        self.last_profits = 0
 
-    def log_asset(self):
-        logging.warning("Cash: {0:.2f} | "
-                        "Holdings: {1:.2f} | "
-                        "Profits: {2:.2f}".format(self.cash, self.holdings_value, self.profits))
+    def log_asset(self, episode):
+        logging.warning(
+            "Episode: {0} | "
+            "Cash: {1:.2f} | "
+            "Holdings: {2:.2f} | "
+            "Profits: {3:.2f}".format(episode, self.cash, self.holdings_value, self.profits))
+
+    def _update_profits(self):
+        self.last_profits = self.profits
+        self.profits = self.holdings_value + self.cash - self.initial_cash
 
     def _exist_position(self, code):
         return True if len([position.code for position in self.positions if position.code == code]) else False
@@ -277,7 +318,7 @@ def main():
 
         s_next, r, status, info = market.forward(actions_indices)
 
-        market.trader.log_asset()
+        market.trader.log_asset("1")
 
         if status == MarketStatus.NotRunning:
             break
