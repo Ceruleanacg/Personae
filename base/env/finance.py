@@ -1,10 +1,12 @@
 # coding=utf-8
 
+import numpy as np
+
 import logging
-import random
 import math
 
 from base.model.finance import Stock
+from sklearn import preprocessing
 from enum import Enum
 
 
@@ -18,57 +20,85 @@ class MarketStatus(Enum):
 
 class Market(object):
 
-    def __init__(self, codes, start_date="2008-01-01", end_date="2018-01-01", use_one_hot=True):
+    def __init__(self, codes, start_date="2008-01-01", end_date="2018-01-01", use_one_hot=True, use_normalized=True):
 
-        # Initialize vars.
         self.codes = codes
         self.dates = []
-        self.trader = Trader(self)
-        self.data_dim = None
-        self.use_one_hot = use_one_hot
-        self.current_date = None
+
+        self.stocks_list = []
+
         self.date_stocks_map = dict()
+        self.date_states_map = dict()
+        self.dates_stocks_pairs = []
 
-        if not len(self.codes):
-            raise ValueError("Initialize, codes cannot be empty.")
+        self.data_dim = None
+        self.current_date = None
 
-        for code in self.codes:
-            # Get stocks date by code.
-            stocks = Stock.get_k_data(code, start_date, end_date)
-            if not self.data_dim:
-                # Init date dim.
-                self.data_dim = self._get_data_dim(stocks.first())
-            # Init date - stock map.
-            for stock in stocks:
-                if stock.date not in self.dates:
-                    self.dates.append(stock.date)
-                try:
-                    stocks_data = self.date_stocks_map[stock.date]
-                    stocks_data.append(stock)
-                except KeyError:
-                    stocks_data = [stock]
-                    self.date_stocks_map[stock.date] = stocks_data
+        self.use_one_hot = use_one_hot
+        self.use_normalized = use_normalized
 
-        for index, date in enumerate(self.date_stocks_map):
-            stocks = self.date_stocks_map[date]
-            if len(stocks) != len(self.codes):
-                last_valid_stocks = self._get_last_valid_stocks_data(index)
-                for stock in last_valid_stocks:
-                    if stock.code not in [s.code for s in stocks]:
-                        # TODO - Order.
-                        stocks.append(stock)
+        self._init_stocks_data(start_date, end_date)
+        self._init_date_stocks_map()
+        self._init_date_states_map()
+
+        self.trader = Trader(self)
 
         self.dates = sorted(self.dates)
         self.iter_dates = iter(self.dates)
 
-    def get_cur_stock_data(self, code_index):
-        # stocks_data will never be None or [].
-        stocks_data = self.date_stocks_map[self.current_date]
-        try:
-            return stocks_data[code_index]
-        except IndexError:
-            code = self.codes[code_index]
-            raise IndexError("Code: {}, not exists in Market on Date: {}.".format(code, self.current_date))
+    def _init_stocks_data(self, start_date, end_date):
+        # Check if codes are valid.
+        if not len(self.codes):
+            raise ValueError("Initialize, codes cannot be empty.")
+        # Init stocks data.
+        for code in self.codes:
+            # Get stocks data by code.
+            stocks = Stock.get_k_data(code, start_date, end_date)
+            self.stocks_list.append(stocks)
+            if not self.data_dim:
+                # Init date dim.
+                self.data_dim = self._get_data_dim(stocks.first())
+            # Init stocks dicts.
+            stock_dicts = [stock.to_dic() for stock in stocks]
+            # Get dates and stock data.
+            dates, stocks = [stock[1] for stock in stock_dicts], [stock[2:] for stock in stock_dicts]
+            # Build date map.
+            [self.dates.append(date) for date in dates if date not in self.dates]
+            # Normalize data.
+            scaler = preprocessing.MinMaxScaler()
+            stocks_scaled = scaler.fit_transform(stocks)
+            # Cache stock data.
+            self.dates_stocks_pairs.append((dates, stocks_scaled))
+
+    def _init_date_stocks_map(self):
+        for index, stocks in enumerate(self.stocks_list):
+            for stock in stocks:
+                try:
+                    stock_dic = self.date_stocks_map[stock.date]
+                    stock_dic[stock.code] = stock
+                except KeyError:
+                    self.date_stocks_map[stock.date] = {stock.code: stock}
+
+    def _init_date_states_map(self):
+        for date in self.dates:
+            self.date_states_map[date] = []
+            for pair_index, (dates, stocks) in enumerate(self.dates_stocks_pairs):
+                try:
+                    stock_index = dates.index(date)
+                    stock = stocks[stock_index]
+                    stocks_list = self.date_states_map[date]
+                    stocks_list.append(stock)
+                except ValueError:
+                    self._fill_stop_date_data(date, pair_index)
+
+    def _fill_stop_date_data(self, date, stock_index):
+        index = list(self.date_states_map.keys()).index(date)
+        last_valid_stocks = self._get_last_valid_stocks_data(index)
+        stocks_list = self.date_states_map[date]
+        stocks_list.insert(stock_index, last_valid_stocks[stock_index])
+
+    def get_cur_stock_data(self, code):
+        return self.date_stocks_map[self.current_date][code]
 
     def reset(self):
         self.trader.reset()
@@ -84,15 +114,15 @@ class Market(object):
         if not self.trader:
             raise ValueError("Trader cannot be None.")
 
-        # Here, action_sheet is like: [0, 1, ..., 1, 2]
+        # Here, action_sheet is like: [-1, 1, ..., -1, 0]
         for index, code in enumerate(self.codes):
             # Get Stock for current date with code.
             action_key = action_keys[index]
             action = self.trader.action_dic[action_key]
             try:
-                stock = self.get_cur_stock_data(index)
+                stock = self.get_cur_stock_data(code)
                 action(stock, 100)
-            except IndexError:
+            except KeyError:
                 logging.info("Current date cannot trade for code: {}.".format(code))
 
         # Update and return the next state.
@@ -104,14 +134,8 @@ class Market(object):
 
     @property
     def state(self):
-        stocks = [stock.to_state() for stock in self.date_stocks_map[self.current_date]]
-        if self.use_one_hot:
-            stock_one_hot = stocks[0]
-            for stock in stocks[1:]:
-                stock_one_hot.extend(stock)
-            return stock_one_hot
-        else:
-            return stocks
+        stocks = np.array([stock for stock in self.date_states_map[self.current_date]])
+        return stocks if not self.use_one_hot else stocks.reshape((1, -1))
 
     def _get_data_dim(self, stock):
         return len(self.codes), len(stock.to_state())
@@ -119,11 +143,11 @@ class Market(object):
     def _get_last_valid_stocks_data(self, index):
         _index = index - 1
         try:
-            date = list(self.date_stocks_map.keys())[_index]
+            date = list(self.date_states_map.keys())[_index]
         except IndexError:
             _index = index + 1
-            date = list(self.date_stocks_map.keys())[_index]
-        stocks = self.date_stocks_map[date]
+            date = list(self.date_states_map.keys())[_index]
+        stocks = self.date_states_map[date]
         if len(stocks) == len(self.codes):
             return stocks
         else:
@@ -167,6 +191,9 @@ class Trader(object):
 
         # Check if amount is OK.
         amount = amount if self.cash > stock.close * amount else int(math.floor(self.cash / stock.close))
+
+        if amount == 0:
+            return logging.info("Code: {}, not enough cash.".format(stock.code))
 
         # Check if position exists.
         if not self._exist_position(stock.code):
@@ -246,7 +273,7 @@ def main():
 
     while True:
 
-        actions_indices = [random.choice(range(market.trader.action_space)) for _ in codes]
+        actions_indices = [np.random.choice([-1, 0, 1]) for _ in codes]
 
         s_next, r, status, info = market.forward(actions_indices)
 

@@ -77,7 +77,7 @@ class Algorithm(object):
         self.session.run(self.c_train_op, {self.s: s, self.a_predict: a, self.r: r, self.s_next: s_next})
 
     def predict_action(self, s):
-        a = self.session.run(self.a_predict, {self.s: [s]})
+        a = self.session.run(self.a_predict, {self.s: s})
         return a
 
     def get_transition_batch(self):
@@ -90,7 +90,7 @@ class Algorithm(object):
         return s, a, r, s_next
 
     def save_transition(self, s, a, r, s_next):
-        transition = np.hstack((s, a[0], [r], s_next))
+        transition = np.hstack((s, a, [[r]], s_next))
         self.buffer[self.buffer_length % self.buffer_size, :] = transition
         self.buffer_length += 1
 
@@ -143,47 +143,6 @@ class Algorithm(object):
                                       trainable=trainable)
 
             return q_value
-
-
-def run_test():
-
-    env = gym.make('Pendulum-v0')
-    env = env.unwrapped
-    env.seed(1)
-
-    state_space = env.observation_space.shape[0]
-    action_space = env.action_space.shape[0]
-    action_upper_bound = env.action_space.high
-
-    algo = Algorithm(tf.Session(), action_space, state_space, action_upper_bound)
-
-    exploration_scale = 3
-
-    for episode in range(200):
-
-        state, reward_episode = env.reset(), 0
-
-        for step in range(200):
-
-            if reward_episode > -300 and episode > 80:
-                env.render()
-
-            action = algo.predict_action(state)
-            action = np.clip(np.random.normal(action, exploration_scale), -2, 2)
-
-            state_next, reward, done, info = env.step(action)
-
-            algo.save_transition(state, action, reward / 10, state_next)
-
-            if algo.buffer_length >= algo.buffer_size:
-                exploration_scale *= .9995
-                algo.train()
-
-            state = state_next
-
-            reward_episode += reward
-
-        print("Episode: {0} | Reward: {1:.2f} | Scale: {2:.2f}".format(episode, reward_episode, exploration_scale))
 
 
 def run_market():

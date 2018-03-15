@@ -58,6 +58,11 @@ class Stock(Document):
         stock_dic.pop('date')
         return stock_dic.values()
 
+    def to_dic(self):
+        stock_dic = self.to_mongo()
+        stock_dic.pop('_id')
+        return stock_dic.values()
+
     @classmethod
     def get_k_data(cls, code, start, end):
         return cls.objects(code=code, date__gte=start, date__lte=end).order_by('date')
