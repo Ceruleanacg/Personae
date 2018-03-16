@@ -5,12 +5,43 @@ import numpy as np
 import logging
 import math
 
+from spider.finance import StockSpider
 from base.model.finance import Stock
 from sklearn import preprocessing
 from enum import Enum
 
 
 logging.basicConfig(level=logging.WARNING)
+
+
+class StockEnv(object):
+
+    def __init__(self, session, codes, agent_class, start_date="2008-01-01", end_date="2018-01-01", **options):
+        self.market = Market(codes, start_date, end_date, **options)
+        self.agent = agent_class(session, self.market.trader.action_space, self.market.data_dim)
+
+        try:
+            self.episodes = options['episodes']
+        except KeyError:
+            self.episodes = 300
+
+    def run(self):
+        for episode in range(self.episodes):
+            self.market.trader.log_asset(episode)
+            s = self.market.reset()
+            while True:
+                a = self.agent.predict_action(s)
+                a_indices = self._get_a_indices(a)
+                s_next, r, status, info = self.market.forward(a_indices)
+                self.agent.save_transition(s, a, r, s_next)
+                self.agent.train_if_need()
+                s = s_next
+                if status == MarketStatus.NotRunning:
+                    break
+
+    @staticmethod
+    def _get_a_indices(a):
+        return np.where(a > 1 / 3, 1, np.where(a < - 1 / 3, -1, 0)).astype(np.int32)[0].tolist()
 
 
 class MarketStatus(Enum):
@@ -66,6 +97,9 @@ class Market(object):
         for code in self.codes:
             # Get stocks data by code.
             stocks = Stock.get_k_data(code, start_date, end_date)
+            if stocks.count() == 0:
+                StockSpider(code, start_date, end_date).crawl()
+                stocks = Stock.get_k_data(code, start_date, end_date)
             self.stocks_list.append(stocks)
             if not self.data_dim:
                 # Init date dim.
