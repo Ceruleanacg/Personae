@@ -3,6 +3,7 @@
 import tensorflow as tf
 import numpy as np
 
+from agent import config
 from base.env.finance import StockEnv
 from helper.args_parser import model_launcher_parser
 
@@ -153,7 +154,7 @@ class Algorithm(object):
 
 if __name__ == '__main__':
     args = model_launcher_parser.parse_args()
-    env = StockEnv(tf.Session(), args.codes, Algorithm)
+    env = StockEnv(tf.Session(config=config), args.codes, Algorithm)
     env.run()
 
 
