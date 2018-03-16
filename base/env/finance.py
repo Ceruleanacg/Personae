@@ -97,9 +97,6 @@ class Market(object):
         for code in self.codes:
             # Get stocks data by code.
             stocks = Stock.get_k_data(code, start_date, end_date)
-            if stocks.count() == 0:
-                StockSpider(code, start_date, end_date).crawl()
-                stocks = Stock.get_k_data(code, start_date, end_date)
             self.stocks_list.append(stocks)
             if not self.data_dim:
                 # Init date dim.
@@ -197,18 +194,17 @@ class Market(object):
             data_dim = len(self.codes) * len(stock.to_state())
         return data_dim
 
-    def _get_last_valid_stocks_data(self, index):
-        _index = index - 1
+    def _get_last_valid_stocks_data(self, index, backward=True):
+        _index = index - 1 if backward else index + 1
         try:
             date = list(self.date_states_map.keys())[_index]
         except IndexError:
-            _index = index + 1
-            date = list(self.date_states_map.keys())[_index]
+            return self._get_last_valid_stocks_data(_index, backward=False)
         stocks = self.date_states_map[date]
         if len(stocks) == len(self.codes):
             return stocks
         else:
-            return self._get_last_valid_stocks_data(_index)
+            return self._get_last_valid_stocks_data(_index, backward=backward)
 
 
 class Trader(object):
