@@ -1,12 +1,11 @@
 FROM ceruleanwang/quant-base:latest
 
+ENV HARU_DIR   /app/haru
 ENV MAYU_DIR   /app/mayu
 ENV PYTHONPATH $PYTHONPATH:/app
 ENV DEBUG      0
 
-WORKDIR $HARU_DIR
-
-#ADD . $HARU_DIR
+WORKDIR $MAYU_DIR
 
 ENTRYPOINT ["python3.5"]
 
