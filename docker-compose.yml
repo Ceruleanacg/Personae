@@ -1,0 +1,31 @@
+version: "3.4"
+services:
+  haru:
+    image: ceruleanwang/haru:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 2
+    entrypoint:
+     - python3.5
+     - predictor/mayu/mayu.py
+    depends_on:
+      - mongo
+    networks:
+      - vn
+  mongo:
+    image: mongo:latest
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        max_attempts: 2
+    ports:
+      - "27017:27017"
+    volumes:
+      - "/data/db:/data/db"
+    networks:
+      - vn
+networks:
+  vn:

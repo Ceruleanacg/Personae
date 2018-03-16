@@ -1,0 +1,50 @@
+- hosts: gpus
+  remote_user: shuyu
+  become: yes
+  become_method: su
+  tasks:
+    - name: Update Package Part-1
+      apt:
+        update_cache: yes
+    - name: Install Docker Dependency Part-1
+      apt:
+        name: apt-transport-https
+        state: latest
+    - name: Install Docker Dependency Part-2
+      apt:
+        name: ca-certificates
+        state: latest
+    - name: Install Docker Dependency Part-3
+      apt:
+        name: curl
+        state: latest
+    - name: Install Docker Dependency Part-4
+      apt:
+        name: software-properties-common
+        state: latest
+    - name: Add Docker GPG Key
+      shell: curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+    - name: Add Repo
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu xenial stable
+        state: present
+    - name: Install Docker
+      apt:
+        name: docker-ce
+        update_cache: yes
+    - name: Add Nvidia GPG Key Part-1
+      shell: curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+    - name: Add Nvidia GPG Key Part-2
+      shell: curl -s -L https://nvidia.github.io/nvidia-docker/ubuntu16.04/amd64/nvidia-docker.list | tee /etc/apt/sources.list.d/nvidia-docker.list
+    - name: Install Nvida-Docker
+      apt:
+        name: nvidia-docker2
+        update_cache: yes
+    - name: Run Nvida-Docker Nvidia-smi
+      shell: docker run --runtime=nvidia --rm nvidia/cuda nvidia-smi
+
+# FIRST:  ansible-console gpus -k -K -b --become-method=su
+# SECOND: useradd -p $(openssl passwd -1 duser@hflab) duser (IN ROOT)
+# THIRD:  usermod -aG docker duser
+# FOURTH: sed '2i \ \ \ \ "default-runtime":"nvidia",' /etc/docker/daemon.json (IN ROOT)
+# FIFTH:  service docker restart
