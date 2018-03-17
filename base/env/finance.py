@@ -31,10 +31,11 @@ class StockEnv(object):
             s = self.market.reset()
             while True:
                 a = self.agent.predict_action(s)
+                # TODO - Bug.
                 a_indices = self._get_a_indices(a)
                 s_next, r, status, info = self.market.forward(a_indices)
                 self.agent.save_transition(s, a, r, s_next)
-                self.agent.train_if_need()
+                self.agent.train()
                 s = s_next
                 if status == MarketStatus.NotRunning:
                     break

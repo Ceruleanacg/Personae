@@ -10,16 +10,28 @@ from helper.args_parser import model_launcher_parser
 
 class Algorithm(object):
 
-    def __init__(self, session, a_space, s_space, learning_rate=0.001, gamma=0.9, tau=0.01, **options):
+    def __init__(self, session, a_space, s_space, **options):
 
         # Initialize session.
         self.session = session
 
-        # Initialize learning parameters.
-        self.learning_rate, self.gamma, self.tau = learning_rate, gamma, tau
-
         # Initialize evn parameters.
         self.a_space, self.s_space = a_space, s_space
+
+        try:
+            self.learning_rate = options['learning_rate']
+        except KeyError:
+            self.learning_rate = 0.001
+
+        try:
+            self.gamma = options['gamma']
+        except KeyError:
+            self.gamma = 0.9
+
+        try:
+            self.tau = options['tau']
+        except KeyError:
+            self.tau = 0.01
 
         try:
             self.batch_size = options['batch_size']
@@ -72,16 +84,12 @@ class Algorithm(object):
         self.session.run(tf.global_variables_initializer())
 
     def train(self):
+        if self.buffer_length < self.buffer_size:
+            return
         self.session.run([self.update_a, self.update_c])
         s, a, r, s_next = self.get_transition_batch()
         self.session.run(self.a_train_op, {self.s: s})
         self.session.run(self.c_train_op, {self.s: s, self.a_predict: a, self.r: r, self.s_next: s_next})
-
-    def train_if_need(self):
-        if self.buffer_length >= self.buffer_size:
-            return self.train()
-        else:
-            return
 
     def predict_action(self, s):
         a = self.session.run(self.a_predict, {self.s: s})
