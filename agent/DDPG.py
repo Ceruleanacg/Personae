@@ -3,6 +3,8 @@
 import tensorflow as tf
 import numpy as np
 
+import logging
+
 from agent import config
 from base.env.finance import StockEnv
 from helper.args_parser import model_launcher_parser
@@ -17,6 +19,8 @@ class Algorithm(object):
 
         # Initialize evn parameters.
         self.a_space, self.s_space = a_space, s_space
+
+        self.actor_loss, self.critic_loss = .0, .0
 
         try:
             self.learning_rate = options['learning_rate']
@@ -88,8 +92,8 @@ class Algorithm(object):
             return
         self.session.run([self.update_a, self.update_c])
         s, a, r, s_next = self.get_transition_batch()
-        self.session.run(self.a_train_op, {self.s: s})
-        self.session.run(self.c_train_op, {self.s: s, self.a_predict: a, self.r: r, self.s_next: s_next})
+        self.critic_loss, _ = self.session.run([self.c_loss, self.c_train_op], {self.s: s, self.a_predict: a, self.r: r, self.s_next: s_next})
+        self.actor_loss, _ = self.session.run([self.a_loss, self.a_train_op], {self.s: s})
 
     def predict_action(self, s):
         a = self.session.run(self.a_predict, {self.s: s})
@@ -109,20 +113,32 @@ class Algorithm(object):
         self.buffer[self.buffer_length % self.buffer_size, :] = transition
         self.buffer_length += 1
 
+    def log_loss(self, episode):
+        logging.warning("Episode: {0} | Actor Loss: {1:.2f} | Critic Loss: {2:.2f}".format(episode,
+                                                                                           self.actor_loss,
+                                                                                           self.critic_loss))
+
     def __build_actor_nn(self, state, scope, trainable=True):
 
         w_init, b_init = tf.random_normal_initializer(.0, .3), tf.constant_initializer(.1)
 
         with tf.variable_scope(scope):
             # state is ? * code_count * data_dim.
-            phi_state = tf.layers.dense(state,
-                                        50,
-                                        tf.nn.relu,
-                                        kernel_initializer=w_init,
-                                        bias_initializer=b_init,
-                                        trainable=trainable)
+            first_dense = tf.layers.dense(state,
+                                          32,
+                                          tf.nn.relu,
+                                          kernel_initializer=w_init,
+                                          bias_initializer=b_init,
+                                          trainable=trainable)
 
-            action_prob = tf.layers.dense(phi_state,
+            second_dense = tf.layers.dense(first_dense,
+                                           32,
+                                           tf.nn.relu,
+                                           kernel_initializer=w_init,
+                                           bias_initializer=b_init,
+                                           trainable=trainable)
+
+            action_prob = tf.layers.dense(second_dense,
                                           self.a_space,
                                           tf.nn.tanh,
                                           kernel_initializer=w_init,
@@ -139,19 +155,33 @@ class Algorithm(object):
 
         with tf.variable_scope(scope):
 
-            phi_state = tf.layers.dense(state,
-                                        50,
-                                        kernel_initializer=w_init,
-                                        bias_initializer=b_init,
-                                        trainable=trainable)
+            s_first_dense = tf.layers.dense(state,
+                                            32,
+                                            tf.nn.relu,
+                                            kernel_initializer=w_init,
+                                            bias_initializer=b_init,
+                                            trainable=trainable)
 
-            phi_action = tf.layers.dense(action,
-                                         50,
-                                         kernel_initializer=w_init,
-                                         bias_initializer=b_init,
-                                         trainable=trainable)
+            s_second_dense = tf.layers.dense(s_first_dense,
+                                             32,
+                                             tf.nn.relu,
+                                             kernel_initializer=w_init,
+                                             bias_initializer=b_init,
+                                             trainable=trainable)
 
-            q_value = tf.layers.dense(tf.nn.relu(phi_state + phi_action),
+            a_first_dense = tf.layers.dense(action,
+                                            32,
+                                            kernel_initializer=w_init,
+                                            bias_initializer=b_init,
+                                            trainable=trainable)
+
+            a_second_dense = tf.layers.dense(a_first_dense,
+                                             32,
+                                             kernel_initializer=w_init,
+                                             bias_initializer=b_init,
+                                             trainable=trainable)
+
+            q_value = tf.layers.dense(tf.nn.relu(s_second_dense + a_second_dense),
                                       1,
                                       kernel_initializer=w_init,
                                       bias_initializer=b_init,

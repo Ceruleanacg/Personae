@@ -28,12 +28,13 @@ class StockEnv(object):
     def run(self):
         for episode in range(self.episodes):
             self.market.trader.log_asset(episode)
+            self.agent.log_loss(episode)
             s = self.market.reset()
             while True:
                 a = self.agent.predict_action(s)
-                # TODO - Bug.
                 a_indices = self._get_a_indices(a)
                 s_next, r, status, info = self.market.forward(a_indices)
+                a = np.array(a_indices).reshape((1, -1))
                 self.agent.save_transition(s, a, r, s_next)
                 self.agent.train()
                 s = s_next
@@ -89,6 +90,7 @@ class Market(object):
         # Check if codes are valid.
         if not len(self.codes):
             raise ValueError("Initialize, codes cannot be empty.")
+        self._remove_invalid_codes()
         dates_stocks_pairs = []
         # Init stocks data.
         for code in self.codes:
@@ -161,6 +163,10 @@ class Market(object):
                 states = np.insert(states, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
         return states
 
+    def _remove_invalid_codes(self):
+        valid_codes = [code for code in self.codes if Stock.exist_in_db(code)]
+        self.codes = valid_codes
+
     def _get_data_dim(self, data_frame):
         if self.use_one_hot:
             data_dim = len(self.codes) * data_frame.shape[1]
@@ -186,6 +192,7 @@ class Trader(object):
         self.last_profits = 0
         self.initial_cash = cash
         self.action_dic = {Trader.ActionBuy: self.buy, Trader.ActionHold: self.hold, Trader.ActionSell: self.sell}
+        self.current_action_code = None
 
     @property
     def codes_count(self):
@@ -203,14 +210,15 @@ class Trader(object):
         return holdings_value
 
     @property
+    def floating_profits(self):
+        return self.profits - self.last_profits
+
+    @property
     def reward(self):
-        floating_profits = self.profits - self.last_profits
-        if floating_profits > 0:
-            return 10
-        elif floating_profits == 0:
-            return -1
-        else:
-            return -5
+        base_reward = 0
+        base_reward += self._calculate_reward_by_action_id()
+        base_reward += self._calculate_reward_by_profits()
+        return base_reward
 
     def buy(self, code, stock, amount):
 
@@ -231,7 +239,7 @@ class Trader(object):
 
         # Update cash and holding price.
         self.cash -= amount * stock.close
-        self._update_profits()
+        self._update_status(self.ActionBuy)
 
     def sell(self, code, stock, amount):
 
@@ -250,10 +258,10 @@ class Trader(object):
 
         # Update cash and holding price.
         self.cash += amount * stock.close
-        self._update_profits()
+        self._update_status(self.ActionSell)
 
     def hold(self, code, stock, amount):
-        self._update_profits()
+        self._update_status(self.ActionHold)
 
     def reset(self):
         self.cash = self.initial_cash
@@ -268,8 +276,9 @@ class Trader(object):
             "Holdings: {2:.2f} | "
             "Profits: {3:.2f}".format(episode, self.cash, self.holdings_value, self.profits))
 
-    def _update_profits(self):
+    def _update_status(self, action_code):
         self.last_profits = self.profits
+        self.current_action_code = action_code
         self.profits = self.holdings_value + self.cash - self.initial_cash
 
     def _exist_position(self, code):
@@ -277,6 +286,32 @@ class Trader(object):
 
     def _get_position(self, code):
         return [position for position in self.positions if position.code == code][0]
+
+    def _calculate_reward_by_action_id(self):
+        if self.current_action_code == self.ActionBuy:
+            return 50
+        elif self.current_action_code == self.ActionSell:
+            return 50 if len(self.positions) else -150
+        else:
+            return 0
+
+    def _calculate_reward_by_profits(self):
+        if self.profits > 0:
+            if self.floating_profits > 0:
+                return 50
+            elif self.floating_profits < 0:
+                return -10
+            else:
+                return 0
+        elif self.profits < 0:
+            if self.floating_profits > 0:
+                return 100
+            elif self.floating_profits < 0:
+                return -50
+            else:
+                return -20
+        else:
+            return -10
 
 
 class Position(object):

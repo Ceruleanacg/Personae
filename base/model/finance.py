@@ -67,3 +67,6 @@ class Stock(Document):
     def get_k_data(cls, code, start, end):
         return cls.objects(code=code, date__gte=start, date__lte=end).order_by('date')
 
+    @classmethod
+    def exist_in_db(cls, code):
+        return True if cls.objects(code=code)[:1].count() else False
