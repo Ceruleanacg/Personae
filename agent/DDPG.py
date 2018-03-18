@@ -79,11 +79,11 @@ class Algorithm(object):
         self.update_c = [tf.assign(t_c, (1 - self.tau) * t_c + self.tau * p_c) for p_c, t_c in zipped_c_params]
         # Initialize actor loss and train op.
         self.a_loss = -tf.reduce_mean(self.q_predict)
-        self.a_train_op = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.a_loss, var_list=params[0])
+        self.a_train_op = tf.train.AdamOptimizer(self.learning_rate).minimize(self.a_loss, var_list=params[0])
         # Initialize critic loss and train op.
         self.q_target = self.r + self.gamma * self.q_next
         self.c_loss = tf.losses.mean_squared_error(self.q_target, self.q_predict)
-        self.c_train_op = tf.train.RMSPropOptimizer(self.learning_rate * 2).minimize(self.c_loss, var_list=params[2])
+        self.c_train_op = tf.train.AdamOptimizer(self.learning_rate * 2).minimize(self.c_loss, var_list=params[2])
         # Initialize variables.
         self.session.run(tf.global_variables_initializer())
 

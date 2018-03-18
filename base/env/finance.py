@@ -11,9 +11,6 @@ from sklearn import preprocessing
 from enum import Enum
 
 
-logging.basicConfig(level=logging.WARNING)
-
-
 class StockEnv(object):
 
     def __init__(self, session, codes, agent_class, start_date="2008-01-01", end_date="2018-01-01", **options):
@@ -24,6 +21,11 @@ class StockEnv(object):
             self.episodes = options['episodes']
         except KeyError:
             self.episodes = 300
+
+        try:
+            logging.basicConfig(level=options['log_level'])
+        except KeyError:
+            logging.basicConfig(level=logging.WARNING)
 
     def run(self):
         for episode in range(self.episodes):
