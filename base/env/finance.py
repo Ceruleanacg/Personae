@@ -165,6 +165,8 @@ class Market(object):
 
     def _remove_invalid_codes(self):
         valid_codes = [code for code in self.codes if Stock.exist_in_db(code)]
+        if not len(valid_codes):
+            raise ValueError("Fatal Error: No valid codes or empty codes.")
         self.codes = valid_codes
 
     def _get_data_dim(self, data_frame):
