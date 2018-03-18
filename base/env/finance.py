@@ -64,6 +64,7 @@ class Market(object):
         self.scaled_stock_frames = dict()
 
         self.data_dim = None
+        self.next_date = None
         self.current_date = None
 
         try:
@@ -87,6 +88,16 @@ class Market(object):
 
         self.dates = sorted(self.dates)
         self.iter_dates = iter(self.dates)
+
+    @property
+    def state(self):
+        states = np.array([self.scaled_stock_frames[code].loc[self.current_date] for code in self.codes])
+        if self.use_one_hot:
+            states = states.reshape((1, -1))
+            if self.use_state_mix_cash:
+                states = np.insert(states, 0, self.trader.cash / self.trader.initial_cash, axis=1)
+                states = np.insert(states, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
+        return states
 
     def _init_stocks_data(self, start_date, end_date):
         # Check if codes are valid.
@@ -120,50 +131,40 @@ class Market(object):
             self.origin_stock_frames[code] = origin_stock_frame
             self.scaled_stock_frames[code] = scaled_stock_frame
 
-    def get_cur_stock_data(self, code):
-        return self.origin_stock_frames[code].loc[self.current_date]
+    def get_stock_data(self, code, date):
+        return self.origin_stock_frames[code].loc[date]
 
     def reset(self):
         self.trader.reset()
         self.iter_dates = iter(self.dates)
         try:
             self.current_date = next(self.iter_dates)
+            self.next_date = next(self.iter_dates)
         except StopIteration:
-            raise ValueError("Initialize failed, dates is empty.")
+            raise ValueError("Initialize failed, dates are too short.")
         return self.state
 
     def forward(self, action_keys):
         # Check trader.
-        if not self.trader:
-            raise ValueError("Trader cannot be None.")
-
+        self.trader.remove_invalid_positions()
         # Here, action_sheet is like: [-1, 1, ..., -1, 0]
         for index, code in enumerate(self.codes):
             # Get Stock for current date with code.
-            action_key = action_keys[index]
-            action = self.trader.action_dic[action_key]
+            action_code = action_keys[index]
+            action = self.trader.action_dic[ActionCode(action_code)]
             try:
-                stock = self.get_cur_stock_data(code)
-                action(code, stock, 100)
+                stock = self.get_stock_data(code, self.current_date)
+                stock_next = self.get_stock_data(code, self.next_date)
+                action(code, stock, 100, stock_next)
             except KeyError:
                 logging.info("Current date cannot trade for code: {}.".format(code))
 
         # Update and return the next state.
         try:
-            self.current_date = next(self.iter_dates)
+            self.current_date, self.next_date = next(self.iter_dates), next(self.iter_dates)
             return self.state, self.trader.reward, MarketStatus.Running, 0
         except StopIteration:
             return self.state, self.trader.reward, MarketStatus.NotRunning, -1
-
-    @property
-    def state(self):
-        states = np.array([self.scaled_stock_frames[code].loc[self.current_date] for code in self.codes])
-        if self.use_one_hot:
-            states = states.reshape((1, -1))
-            if self.use_state_mix_cash:
-                states = np.insert(states, 0, self.trader.cash / self.trader.initial_cash, axis=1)
-                states = np.insert(states, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
-        return states
 
     def _remove_invalid_codes(self):
         valid_codes = [code for code in self.codes if Stock.exist_in_db(code)]
@@ -181,22 +182,30 @@ class Market(object):
         return data_dim
 
 
-class Trader(object):
+class ActionCode(Enum):
+    Buy = 1
+    Hold = 0
+    Sell = -1
 
-    ActionBuy = 1
-    ActionHold = 0
-    ActionSell = -1
+
+class ActionStatus(Enum):
+    Success = 0
+    Failed = -1
+
+
+class Trader(object):
 
     def __init__(self, market, cash=100000.0):
         self.cash = cash
         self.codes = market.codes
         self.market = market
-        self.profits = 0
+        self.reward = 0
         self.positions = []
-        self.last_profits = 0
         self.initial_cash = cash
-        self.action_dic = {Trader.ActionBuy: self.buy, Trader.ActionHold: self.hold, Trader.ActionSell: self.sell}
-        self.current_action_code = None
+        self.cur_action_code = None
+        self.cur_action_status = None
+        self.prospective_profits = 0
+        self.action_dic = {ActionCode.Buy: self.buy, ActionCode.Hold: self.hold, ActionCode.Sell: self.sell}
 
     @property
     def codes_count(self):
@@ -207,83 +216,105 @@ class Trader(object):
         return self.codes_count
 
     @property
+    def profits(self):
+        return self.cash + self.holdings_value - self.initial_cash
+
+    @property
     def holdings_value(self):
         holdings_value = 0
         for position in self.positions:
-            holdings_value += position.holding_value
+            holdings_value += position.cur_value
         return holdings_value
 
-    @property
-    def floating_profits(self):
-        return self.profits - self.last_profits
-
-    @property
-    def reward(self):
-        base_reward = 0
-        base_reward += self._calculate_reward_by_action_id()
-        base_reward += self._calculate_reward_by_profits()
-        return base_reward
-
-    def buy(self, code, stock, amount):
-
-        # Check if amount is OK.
+    def buy(self, code, stock, amount, stock_next):
+        # Check if amount is valid.
         amount = amount if self.cash > stock.close * amount else int(math.floor(self.cash / stock.close))
-
-        if amount == 0:
-            return logging.info("Code: {}, not enough cash.".format(code))
-
-        # Check if position exists.
-        if not self._exist_position(code):
-            # Build position if possible.
-            self.positions.append(Position(code, stock.close, amount))
+        # If amount > 0, means cash is enough.
+        if amount > 0:
+            # Check if position exists.
+            if not self._exist_position(code):
+                # Build position if possible.
+                position = Position(code, stock.close, amount, stock_next.close)
+                self.positions.append(position)
+            else:
+                # Get position and update if possible.
+                position = self._get_position(code)
+                position.add(stock.close, amount, stock_next.close)
+            # Update cash and holding price.
+            self.cash -= amount * stock.close
+            self._update_reward(ActionCode.Buy, ActionStatus.Success, position)
         else:
-            # Get position and update if possible.
-            position = self._get_position(code)
-            position.add(stock.close, amount)
+            logging.info("Code: {}, not enough cash, cannot buy.".format(code))
+            if self._exist_position(code):
+                # If position exists, update status.
+                position = self._get_position(code)
+                position.update_status(stock.close, stock_next.close)
+                # TODO - Update status for cannot afford if need.
+                self._update_reward(ActionCode.Buy, ActionStatus.Failed, position)
 
-        # Update cash and holding price.
-        self.cash -= amount * stock.close
-        self._update_status(self.ActionBuy)
-
-    def sell(self, code, stock, amount):
-
+    def sell(self, code, stock, amount, stock_next):
         # Check if position exists.
         if not self._exist_position(code):
-            return logging.info("Code: {}, not exists in Positions.".format(code))
-
-        position = self._get_position(code)
-
+            logging.info("Code: {}, not exists in Positions, sell failed.".format(code))
+            return self._update_reward(ActionCode.Sell, ActionStatus.Failed, None)
         # Sell position if possible.
+        position = self._get_position(code)
         amount = amount if amount < position.amount else position.amount
-        position.sub(stock.close, amount)
-
-        if position.amount == 0:
-            self.positions.remove(position)
-
+        position.sub(stock.close, amount, stock_next.close)
         # Update cash and holding price.
         self.cash += amount * stock.close
-        self._update_status(self.ActionSell)
+        self._update_reward(ActionCode.Sell, ActionStatus.Success, position)
 
-    def hold(self, code, stock, amount):
-        self._update_status(self.ActionHold)
+    def hold(self, code, stock, _, stock_next):
+        if not self._exist_position(code):
+            logging.info("Code: {}, not exists in Positions, hold failed.")
+            return self._update_reward(ActionCode.Hold, ActionStatus.Failed, None)
+        position = self._get_position(code)
+        position.update_status(stock.close, stock_next.close)
+        self._update_reward(ActionCode.Hold, ActionStatus.Failed, position)
 
     def reset(self):
         self.cash = self.initial_cash
         self.positions = []
-        self.profits = 0
-        self.last_profits = 0
+
+    def reset_reward(self):
+        self.reward = 0
+
+    def remove_invalid_positions(self):
+        self.positions = [position for position in self.positions if position.amount > 0]
 
     def log_asset(self, episode):
         logging.warning(
             "Episode: {0} | "
             "Cash: {1:.2f} | "
             "Holdings: {2:.2f} | "
-            "Profits: {3:.2f}".format(episode, self.cash, self.holdings_value, self.profits))
+            "Profits: {3:.2f}".format(episode, self.cash, self.holdings_value, self.profits)
+        )
 
-    def _update_status(self, action_code):
-        self.last_profits = self.profits
-        self.current_action_code = action_code
-        self.profits = self.holdings_value + self.cash - self.initial_cash
+    def log_reward(self):
+        logging.info("Reward: {}".format(self.reward))
+
+    def _update_reward(self, action_code, action_status, position):
+        if action_code == ActionCode.Buy:
+            if action_status == ActionStatus.Success:
+                if position.pro_value > position.cur_value:
+                    self.reward += 10
+                else:
+                    self.reward -= 10
+            else:
+                self.reward -= 50
+        elif action_code == ActionCode.Sell:
+            if action_status == ActionStatus.Success:
+                if position.pro_value > position.cur_value:
+                    self.reward -= 10
+                else:
+                    self.reward += 10
+        else:
+            if action_status == ActionStatus.Success:
+                if position.pro_value > position.cur_value:
+                    self.reward += 10
+                else:
+                    self.reward -= 10
 
     def _exist_position(self, code):
         return True if len([position.code for position in self.positions if position.code == code]) else False
@@ -291,52 +322,34 @@ class Trader(object):
     def _get_position(self, code):
         return [position for position in self.positions if position.code == code][0]
 
-    def _calculate_reward_by_action_id(self):
-        if self.current_action_code == self.ActionBuy:
-            return 50
-        elif self.current_action_code == self.ActionSell:
-            return 50 if len(self.positions) else -150
-        else:
-            return 0
-
-    def _calculate_reward_by_profits(self):
-        if self.profits > 0:
-            if self.floating_profits > 0:
-                return 50
-            elif self.floating_profits < 0:
-                return -10
-            else:
-                return 0
-        elif self.profits < 0:
-            if self.floating_profits > 0:
-                return 100
-            elif self.floating_profits < 0:
-                return -50
-            else:
-                return -20
-        else:
-            return -10
-
 
 class Position(object):
 
-    def __init__(self, code, buy_price, amount):
+    def __init__(self, code, buy_price, amount, next_price):
         self.code = code
         self.amount = amount
         self.buy_price = buy_price
         self.cur_price = buy_price
-        self.holding_value = self.cur_price * self.amount
+        self.cur_value = self.cur_price * self.amount
+        self.pro_value = next_price * self.amount
 
-    def add(self, buy_price, amount):
+    def add(self, buy_price, amount, next_price):
         self.buy_price = (self.amount * self.buy_price + amount * buy_price) / (self.amount + amount)
-        self.cur_price = buy_price
         self.amount += amount
-        self.holding_value = self.cur_price * self.amount
+        self.update_status(buy_price, next_price)
 
-    def sub(self, sell_price, amount):
+    def sub(self, sell_price, amount, next_price):
         self.cur_price = sell_price
         self.amount -= amount
-        self.holding_value = self.cur_price * self.amount
+        self.update_status(sell_price, next_price)
+
+    def hold(self, cur_price, next_price):
+        self.update_status(cur_price, next_price)
+
+    def update_status(self, cur_price, next_price):
+        self.cur_price = cur_price
+        self.cur_value = self.cur_price * self.amount
+        self.pro_value = next_price * self.amount
 
 
 def main():
@@ -345,6 +358,8 @@ def main():
     market = Market(codes)
     market.reset()
 
+    logging.basicConfig(level=logging.INFO)
+
     while True:
 
         actions_indices = [np.random.choice([-1, 0, 1]) for _ in codes]
@@ -352,6 +367,7 @@ def main():
         s_next, r, status, info = market.forward(actions_indices)
 
         market.trader.log_asset("1")
+        market.trader.log_reward()
 
         if status == MarketStatus.NotRunning:
             break
