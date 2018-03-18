@@ -1,5 +1,6 @@
 # mayu - RL & SL Methods and Environment For Trading
-New frameworks and envs with implementations of RL and SL methods for trading.
+New frameworks and envs with implementations of RL and SL methods for trading.   
+This project is trying to implement Papers in Deep Reinforcement Learning and Supervised Learning and applying them in Financial Market.
 
 # Content
 
