@@ -147,6 +147,7 @@ class Market(object):
     def forward(self, action_keys):
         # Check trader.
         self.trader.remove_invalid_positions()
+        self.trader.reset_reward()
         # Here, action_sheet is like: [-1, 1, ..., -1, 0]
         for index, code in enumerate(self.codes):
             # Get Stock for current date with code.
@@ -204,7 +205,6 @@ class Trader(object):
         self.initial_cash = cash
         self.cur_action_code = None
         self.cur_action_status = None
-        self.prospective_profits = 0
         self.action_dic = {ActionCode.Buy: self.buy, ActionCode.Hold: self.hold, ActionCode.Sell: self.sell}
 
     @property
@@ -249,7 +249,6 @@ class Trader(object):
                 # If position exists, update status.
                 position = self._get_position(code)
                 position.update_status(stock.close, stock_next.close)
-                # TODO - Update status for cannot afford if need.
                 self._update_reward(ActionCode.Buy, ActionStatus.Failed, position)
 
     def sell(self, code, stock, amount, stock_next):
@@ -309,12 +308,16 @@ class Trader(object):
                     self.reward -= 10
                 else:
                     self.reward += 10
+            else:
+                self.reward -= 50
         else:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
                     self.reward += 10
                 else:
                     self.reward -= 10
+            else:
+                self.reward -= 50
 
     def _exist_position(self, code):
         return True if len([position.code for position in self.positions if position.code == code]) else False
@@ -354,7 +357,7 @@ class Position(object):
 
 def main():
 
-    codes = ["600036", "601998"]
+    codes = ["600036", "601328", "601998", "601288"]
     market = Market(codes)
     market.reset()
 
