@@ -192,7 +192,7 @@ class Algorithm(object):
 
 if __name__ == '__main__':
     args = model_launcher_parser.parse_args()
-    env = StockEnv(tf.Session(config=config), args.codes, Algorithm)
+    env = StockEnv(tf.Session(config=config), args.codes, Algorithm, **{"log_level": args.log_level})
     env.run()
 
 
