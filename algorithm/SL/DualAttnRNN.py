@@ -55,3 +55,7 @@ class Algorithm(BaseTFModel):
             if step > 0 and (step + 1) % self.save_step == 0:
                 if self.enable_saver:
                     self.save(step)
+
+
+if __name__ == '__main__':
+    pass

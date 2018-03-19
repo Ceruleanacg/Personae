@@ -137,7 +137,7 @@
 #     a_space = env.action_space.n
 #     s_space = env.observation_space.shape[0]
 #
-#     agent = Algorithm(a_space, s_space)
+#     RL = Algorithm(a_space, s_space)
 #
 #     for i_episode in range(400):
 #         s = env.reset()
@@ -146,7 +146,7 @@
 #             if i_episode > 200:
 #                 env.render()
 #
-#             a_prob = agent.predict_action(s)
+#             a_prob = RL.predict_action(s)
 #             a_index = np.argmax(a_prob)
 #             s_, r, done, info = env.step(a_index)
 #
@@ -158,10 +158,10 @@
 #
 #             a = np.empty(a_space)
 #             a[a_index] = 1
-#             agent.save_transition(s, a, r, s_)
+#             RL.save_transition(s, a, r, s_)
 #
 #             ep_r += r
-#             agent.train()
+#             RL.train()
 #             if done:
 #                 print('Ep: ', i_episode,
 #                       '| Ep_r: ', round(ep_r, 2))

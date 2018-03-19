@@ -68,6 +68,11 @@ class Market(object):
         self.current_date = None
 
         try:
+            self.use_sequence = options['use_sequence']
+        except KeyError:
+            self.use_sequence = False
+
+        try:
             self.use_one_hot = options['use_one_hot']
         except KeyError:
             self.use_one_hot = True
@@ -81,6 +86,11 @@ class Market(object):
             self.use_state_mix_cash = options['state_mix_cash']
         except KeyError:
             self.use_state_mix_cash = True
+
+        try:
+            self.seq_length = options['seq_length']
+        except KeyError:
+            self.seq_length = 5
 
         self._init_stocks_data(start_date, end_date)
 
@@ -121,7 +131,8 @@ class Market(object):
             columns = ['open', 'high', 'low', 'close', 'volume']
             origin_stock_frame = pd.DataFrame(data=stocks, index=dates, columns=columns)
             scaled_stock_frame = pd.DataFrame(data=stocks_scaled, index=dates, columns=columns)
-            self.origin_stock_frames[code], self.scaled_stock_frames[code] = origin_stock_frame, scaled_stock_frame
+            self.origin_stock_frames[code] = origin_stock_frame
+            self.scaled_stock_frames[code] = scaled_stock_frame
             if not self.data_dim:
                 self.data_dim = self._get_data_dim(origin_stock_frame)
 

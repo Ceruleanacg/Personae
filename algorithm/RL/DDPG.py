@@ -5,7 +5,7 @@ import numpy as np
 
 import logging
 
-from algorithm.agent import config
+from algorithm import config
 from base.env.finance import StockEnv
 from helper.args_parser import model_launcher_parser
 
