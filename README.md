@@ -24,9 +24,13 @@ Before you start testing, following requirements are needed.
 - Pandas
 - sklearn
 - mongoengine
-- tushare   
+- tushare
+- CUDA (option)
+- Docker (option)
 
-It's best that if you are a Docker user, so that you can use run three lines code to start.
+It's best that if you are a Docker user, so that you can use run the  
+ 
+And you can also use [Ansible](http://www.ansible.com.cn/) to run [CUDA-Playbook](playbook/cuda-playbook.yml) and [Docker-Playbook](playbook/docker-playbook.yml) to install CUDA and [Nvidia-Docker](https://github.com/NVIDIA/nvidia-docker) if you want to run tests in a Docker Container.
 
 # How to Use
 
@@ -34,7 +38,8 @@ It's best that if you are a Docker user, so that you can use run three lines cod
 
 #### About base image
 My image for this repo is [ceruleanwang/haru](https://hub.docker.com/r/ceruleanwang/haru/), and haru is inherited from [ceruleanwang/quant](https://hub.docker.com/r/ceruleanwang/quant-base/).   
-The image ceruleanwang/quant is inherited from [nvidia/cuda:8.0-cudnn6-runtime](https://hub.docker.com/r/nvidia/cuda/), 
+The image ceruleanwang/quant is inherited from [nvidia/cuda:8.0-cudnn6-runtime](https://hub.docker.com/r/nvidia/cuda/).   
+So please make sure your CUDA version and cuDNN version are correct. 
 
 #### Instructions
 First you should make sure you have stocks data in your mongodb.
@@ -61,6 +66,7 @@ docker run -t -v local_project_dir:docker_project_dir --network=yuor_network cer
 
 ### If you use Conda
 You can create an env yourself, and install Python3.5 and all dependencies required, then just run algorithm in your way. 
+
 
 # TODO
 - More Implementations of Papers.
