@@ -9,7 +9,7 @@ services:
         max_attempts: 2
     entrypoint:
      - python3.5
-     - SL/mayu/mayu.py
+     - nn/mayu/mayu.py
     depends_on:
       - mongo
     networks:

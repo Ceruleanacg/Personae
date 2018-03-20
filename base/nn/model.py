@@ -25,7 +25,7 @@ class BaseTFModel(object):
         try:
             self.train_steps = options["train_steps"]
         except KeyError:
-            self.train_steps = 3000
+            self.train_steps = 30000
 
         try:
             self.enable_saver = options["enable_saver"]
@@ -74,7 +74,7 @@ class BaseTFModel(object):
         return tf.layers.max_pooling2d(convoluted_tensor, pooling_size, strides=[1, 1])
 
     @staticmethod
-    def add_fc(x, units, activation):
+    def add_fc(x, units, activation=None):
         return tf.layers.dense(x, units, activation=activation)
 
     @abstractmethod

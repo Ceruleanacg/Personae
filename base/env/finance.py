@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 
 import logging
-import time
 import math
 
 from base.model.finance import Stock
@@ -14,9 +13,30 @@ from enum import Enum
 
 class StockEnv(object):
 
-    def __init__(self, session, codes, agent_class, start_date="2008-01-01", end_date="2018-01-01", **options):
+    ModeRL, ModeSL, ModeMIX = 0, 1, 2
+
+    def __init__(self, codes, start_date="2008-01-01", end_date="2018-01-01", **options):
         self.market = Market(codes, start_date, end_date, **options)
-        self.agent = agent_class(session, self.market.trader.action_space, self.market.data_dim)
+
+        try:
+            self.session = options['session']
+        except KeyError:
+            self.session = None
+
+        try:
+            self.agent = options['agent_class'](self.session,
+                                                self.market.trader.action_space,
+                                                self.market.data_dim)
+        except KeyError:
+            self.agent = None
+
+        try:
+            self.predictor = options['predictor_class'](self.session,
+                                                        self.market.seq_length,
+                                                        self.market.data_dim,
+                                                        self.market.code_count)
+        except KeyError:
+            self.predictor = None
 
         try:
             self.episodes = options['episodes']
@@ -28,7 +48,14 @@ class StockEnv(object):
         except KeyError:
             logging.basicConfig(level=logging.WARNING)
 
-    def run(self):
+        self._run_methods = [self._run_rl_mode, self._run_sl_mode]
+
+    def run(self, mode=ModeRL):
+        self._run_methods[mode]()
+
+    def _run_rl_mode(self):
+        if not self.agent:
+            raise ValueError("In RL mode, predictor cannot be None")
         for episode in range(self.episodes):
             self.market.trader.log_asset(episode)
             self.agent.log_loss(episode)
@@ -43,6 +70,11 @@ class StockEnv(object):
                 s = s_next
                 if status == MarketStatus.NotRunning:
                     break
+
+    def _run_sl_mode(self):
+        if not self.predictor:
+            raise ValueError("In SL mode, predictor cannot be None")
+        self.predictor.train(self.market.get_batch_sequences)
 
     @staticmethod
     def _get_a_indices(a):
@@ -64,7 +96,8 @@ class Market(object):
         self.origin_stock_frames = dict()
         self.scaled_stock_frames = dict()
 
-        self.scaled_stock_seqs_map = dict()
+        self.scaled_stock_seqs_x = None
+        self.scaled_stock_seqs_y = None
 
         self.next_date = None
         self.current_date = None
@@ -93,35 +126,29 @@ class Market(object):
             self.seq_length = options['seq_length']
         except KeyError:
             self.seq_length = 5
+        finally:
+            self.seq_length = self.seq_length if self.seq_length > 1 else 2
 
         self._init_stocks_data(start_date, end_date)
 
         self.trader = Trader(self)
 
-        self.dates = sorted(self.dates)
         self.iter_dates = iter(self.dates)
 
     @property
     def state(self):
-        if not self.use_sequence:
-            state = np.array([self.scaled_stock_frames[code].loc[self.current_date] for code in self.codes])
-            if self.use_one_hot:
-                state = state.reshape((1, -1))
-                if self.use_state_mix_cash:
-                    state = np.insert(state, 0, self.trader.cash / self.trader.initial_cash, axis=1)
-                    state = np.insert(state, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
-            return state
-        else:
-            index = self.dates.index(self.current_date)
-            stock_seqs = [self.scaled_stock_seqs_map[code][index] for code in self.codes]
-            stock_seqs = [np.array(stock_seq).reshape((1, -1)) for stock_seq in stock_seqs]
-            print(stock_seqs)
+        return self._get_state(self.current_date)
+
+    @property
+    def code_count(self):
+        return len(self.codes)
 
     @property
     def data_dim(self):
         if self.use_sequence:
-            data_frame = self.scaled_stock_seqs_map[0][0]
-            return self.seq_length, len(self.codes) * data_frame.shape[1]
+            data_frame = self.scaled_stock_frames[self.codes[0]]
+            data_dim = len(self.codes) * data_frame.shape[1]
+            return data_dim
         else:
             data_frame = self.scaled_stock_frames[self.codes[0]]
             if self.use_one_hot:
@@ -133,10 +160,61 @@ class Market(object):
             return data_dim
 
     def _init_stocks_data(self, start_date, end_date):
-        # Check if codes are valid.
+        self._remove_invalid_codes()
+        self._init_stock_frames(start_date, end_date)
+        self._init_sequences()
+
+    def forward(self, action_keys):
+        # Check trader.
+        self.trader.remove_invalid_positions()
+        self.trader.reset_reward()
+        # Here, action_sheet is like: [-1, 1, ..., -1, 0]
+        for index, code in enumerate(self.codes):
+            # Get Stock for current date with code.
+            action_code = action_keys[index]
+            action = self.trader.action_dic[ActionCode(action_code)]
+            try:
+                stock = self._get_stock_data(code, self.current_date)
+                stock_next = self._get_stock_data(code, self.next_date)
+                action(code, stock, 100, stock_next)
+            except KeyError:
+                logging.info("Current date cannot trade for code: {}.".format(code))
+
+        # Update and return the next state.
+        try:
+            self.current_date, self.next_date = next(self.iter_dates), next(self.iter_dates)
+            return self.state, self.trader.reward, MarketStatus.Running, 0
+        except StopIteration:
+            return self.state, self.trader.reward, MarketStatus.NotRunning, -1
+
+    def reset(self):
+        self.trader.reset()
+        self.iter_dates = iter(self.dates)
+        try:
+            self.current_date = next(self.iter_dates)
+            self.next_date = next(self.iter_dates)
+        except StopIteration:
+            raise ValueError("Initialize failed, dates are too short.")
+        return self.state
+
+    def get_batch_sequences(self, batch_size=32):
+        batch_indices = np.random.choice(self.sequence_indices, batch_size)
+        batch_x_sequences = self.scaled_stock_seqs_x[batch_indices]
+        batch_y_sequences = self.scaled_stock_seqs_y[batch_indices]
+        return batch_x_sequences, batch_y_sequences
+
+    def _get_stock_data(self, code, date):
+        return self.origin_stock_frames[code].loc[date]
+
+    def _remove_invalid_codes(self):
         if not len(self.codes):
             raise ValueError("Initialize, codes cannot be empty.")
-        self._remove_invalid_codes()
+        valid_codes = [code for code in self.codes if Stock.exist_in_db(code)]
+        if not len(valid_codes):
+            raise ValueError("Fatal Error: No valid codes or empty codes.")
+        self.codes = valid_codes
+
+    def _init_stock_frames(self, start_date, end_date):
         dates_stocks_pairs = []
         # Init stocks data.
         for code in self.codes:
@@ -157,62 +235,55 @@ class Market(object):
             self.origin_stock_frames[code] = origin_stock_frame
             self.scaled_stock_frames[code] = scaled_stock_frame
 
+        self.dates = sorted(self.dates)
+
         for code in self.codes:
             origin_stock_frame = self.origin_stock_frames[code].reindex(self.dates, method='bfill')
             scaled_stock_frame = self.scaled_stock_frames[code].reindex(self.dates, method='bfill')
             self.origin_stock_frames[code] = origin_stock_frame
             self.scaled_stock_frames[code] = scaled_stock_frame
 
+    def _init_sequences(self):
         if self.use_sequence:
-            for code in self.codes:
-                scaled_stock_seqs, valid_dates = [], self.dates[self.seq_length - 1: -1 - (self.seq_length - 1)]
-                for index, date in enumerate(valid_dates):
-                    # dates = self.dates[index: index + self.seq_length]
-                    stocks_seq = self.scaled_stock_frames[code].iloc[index: index + self.seq_length]
-                    scaled_stock_seqs.append(stocks_seq)
-                self.scaled_stock_seqs_map[code] = scaled_stock_seqs
+            self.dates = self.dates[self.seq_length - 1: -1 - (self.seq_length - 1)]
+            scaled_stock_seqs_x, scaled_stock_seqs_y = [], []
+            for date_index, date in enumerate(self.dates):
+                # Get x.
+                stock_seq_x = []
+                stock_seq_y = []
+                for seq_index in range(self.seq_length):
+                    stocks_x = []
+                    for code in self.codes:
+                        loc_index = date_index + seq_index + self.seq_length - 1
+                        stock = self.scaled_stock_frames[code].iloc[loc_index]
+                        stocks_x.append(stock)
+                    stocks_x = np.array(stocks_x).reshape((-1))
 
-    def get_stock_data(self, code, date):
-        return self.origin_stock_frames[code].loc[date]
+                    stock_seq_x.append(stocks_x)
+                stocks_y = []
+                for code in self.codes:
+                    label = self.scaled_stock_frames[code]['close'].iloc[date_index + self.seq_length]
+                    stocks_y.append(label)
+                stocks_y = np.array(stocks_y)
+                stock_seq_y.append(stocks_y)
+                scaled_stock_seqs_x.append(np.array(stock_seq_x))
+                scaled_stock_seqs_y.append(np.array(stock_seq_y).reshape(-1))
+            self.scaled_stock_seqs_x = np.array(scaled_stock_seqs_x)
+            self.scaled_stock_seqs_y = np.array(scaled_stock_seqs_y)
+            self.sequence_indices = np.arange(0, len(scaled_stock_seqs_x))
 
-    def reset(self):
-        self.trader.reset()
-        self.iter_dates = iter(self.dates)
-        try:
-            self.current_date = next(self.iter_dates)
-            self.next_date = next(self.iter_dates)
-        except StopIteration:
-            raise ValueError("Initialize failed, dates are too short.")
-        return self.state
-
-    def forward(self, action_keys):
-        # Check trader.
-        self.trader.remove_invalid_positions()
-        self.trader.reset_reward()
-        # Here, action_sheet is like: [-1, 1, ..., -1, 0]
-        for index, code in enumerate(self.codes):
-            # Get Stock for current date with code.
-            action_code = action_keys[index]
-            action = self.trader.action_dic[ActionCode(action_code)]
-            try:
-                stock = self.get_stock_data(code, self.current_date)
-                stock_next = self.get_stock_data(code, self.next_date)
-                action(code, stock, 100, stock_next)
-            except KeyError:
-                logging.info("Current date cannot trade for code: {}.".format(code))
-
-        # Update and return the next state.
-        try:
-            self.current_date, self.next_date = next(self.iter_dates), next(self.iter_dates)
-            return self.state, self.trader.reward, MarketStatus.Running, 0
-        except StopIteration:
-            return self.state, self.trader.reward, MarketStatus.NotRunning, -1
-
-    def _remove_invalid_codes(self):
-        valid_codes = [code for code in self.codes if Stock.exist_in_db(code)]
-        if not len(valid_codes):
-            raise ValueError("Fatal Error: No valid codes or empty codes.")
-        self.codes = valid_codes
+    def _get_state(self, date):
+        if not self.use_sequence:
+            state = [self.scaled_stock_frames[code].loc[date] for code in self.codes]
+            state = np.array(state)
+            if self.use_one_hot:
+                state = state.reshape((1, -1))
+                if self.use_state_mix_cash:
+                    state = np.insert(state, 0, self.trader.cash / self.trader.initial_cash, axis=1)
+                    state = np.insert(state, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
+            return state
+        else:
+            return self.scaled_stock_seqs_x[self.dates.index(date)]
 
 
 class ActionCode(Enum):
