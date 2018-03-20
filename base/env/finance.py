@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 
 import logging
+import time
 import math
 
 from base.model.finance import Stock
@@ -63,7 +64,8 @@ class Market(object):
         self.origin_stock_frames = dict()
         self.scaled_stock_frames = dict()
 
-        self.data_dim = None
+        self.scaled_stock_seqs_map = dict()
+
         self.next_date = None
         self.current_date = None
 
@@ -101,13 +103,34 @@ class Market(object):
 
     @property
     def state(self):
-        states = np.array([self.scaled_stock_frames[code].loc[self.current_date] for code in self.codes])
-        if self.use_one_hot:
-            states = states.reshape((1, -1))
-            if self.use_state_mix_cash:
-                states = np.insert(states, 0, self.trader.cash / self.trader.initial_cash, axis=1)
-                states = np.insert(states, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
-        return states
+        if not self.use_sequence:
+            state = np.array([self.scaled_stock_frames[code].loc[self.current_date] for code in self.codes])
+            if self.use_one_hot:
+                state = state.reshape((1, -1))
+                if self.use_state_mix_cash:
+                    state = np.insert(state, 0, self.trader.cash / self.trader.initial_cash, axis=1)
+                    state = np.insert(state, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
+            return state
+        else:
+            index = self.dates.index(self.current_date)
+            stock_seqs = [self.scaled_stock_seqs_map[code][index] for code in self.codes]
+            stock_seqs = [np.array(stock_seq).reshape((1, -1)) for stock_seq in stock_seqs]
+            print(stock_seqs)
+
+    @property
+    def data_dim(self):
+        if self.use_sequence:
+            data_frame = self.scaled_stock_seqs_map[0][0]
+            return self.seq_length, len(self.codes) * data_frame.shape[1]
+        else:
+            data_frame = self.scaled_stock_frames[self.codes[0]]
+            if self.use_one_hot:
+                data_dim = len(self.codes) * data_frame.shape[1]
+                if self.use_state_mix_cash:
+                    data_dim += 2
+            else:
+                data_dim = len(self.codes) * data_frame.shape[1]
+            return data_dim
 
     def _init_stocks_data(self, start_date, end_date):
         # Check if codes are valid.
@@ -133,14 +156,21 @@ class Market(object):
             scaled_stock_frame = pd.DataFrame(data=stocks_scaled, index=dates, columns=columns)
             self.origin_stock_frames[code] = origin_stock_frame
             self.scaled_stock_frames[code] = scaled_stock_frame
-            if not self.data_dim:
-                self.data_dim = self._get_data_dim(origin_stock_frame)
 
         for code in self.codes:
             origin_stock_frame = self.origin_stock_frames[code].reindex(self.dates, method='bfill')
             scaled_stock_frame = self.scaled_stock_frames[code].reindex(self.dates, method='bfill')
             self.origin_stock_frames[code] = origin_stock_frame
             self.scaled_stock_frames[code] = scaled_stock_frame
+
+        if self.use_sequence:
+            for code in self.codes:
+                scaled_stock_seqs, valid_dates = [], self.dates[self.seq_length - 1: -1 - (self.seq_length - 1)]
+                for index, date in enumerate(valid_dates):
+                    # dates = self.dates[index: index + self.seq_length]
+                    stocks_seq = self.scaled_stock_frames[code].iloc[index: index + self.seq_length]
+                    scaled_stock_seqs.append(stocks_seq)
+                self.scaled_stock_seqs_map[code] = scaled_stock_seqs
 
     def get_stock_data(self, code, date):
         return self.origin_stock_frames[code].loc[date]
@@ -183,15 +213,6 @@ class Market(object):
         if not len(valid_codes):
             raise ValueError("Fatal Error: No valid codes or empty codes.")
         self.codes = valid_codes
-
-    def _get_data_dim(self, data_frame):
-        if self.use_one_hot:
-            data_dim = len(self.codes) * data_frame.shape[1]
-            if self.use_state_mix_cash:
-                data_dim += 2
-        else:
-            data_dim = len(self.codes) * data_frame.shape[1]
-        return data_dim
 
 
 class ActionCode(Enum):
