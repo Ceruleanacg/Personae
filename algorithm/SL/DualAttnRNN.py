@@ -2,10 +2,12 @@
 
 import tensorflow as tf
 import logging
+import os
 
 from algorithm import config
 from base.nn.model import BaseTFModel
 from base.env.finance import StockEnv
+from checkpoints import CHECKPOINTS_DIR
 from helper.args_parser import model_launcher_parser
 
 
@@ -23,6 +25,7 @@ class Algorithm(BaseTFModel):
         self._init_input()
         self._init_nn()
         self._init_op()
+        self._init_saver()
 
     def _init_input(self):
         self.x = tf.placeholder(tf.float32, [None, self.seq_length, self.x_space])
@@ -61,7 +64,7 @@ class Algorithm(BaseTFModel):
             batch_x, batch_y = get_batch_func(batch_size)
             _, loss = self.session.run([self.train_op, self.loss], feed_dict={self.x: batch_x, self.label: batch_y})
             if (step + 1) % 1000 == 0:
-                logging.warning("Step: {0} | Loss: {1:.4f}".format(step + 1, loss))
+                logging.warning("Step: {0} | Loss: {1:.7f}".format(step + 1, loss))
             if step > 0 and (step + 1) % self.save_step == 0:
                 if self.enable_saver:
                     self.save(step)
@@ -69,11 +72,15 @@ class Algorithm(BaseTFModel):
 
 if __name__ == '__main__':
     args = model_launcher_parser.parse_args()
+    sess = tf.Session(config=config)
     env = StockEnv(args.codes, **{
-        "session": tf.Session(config=config),
         "use_sequence": True,
         "predictor_class": Algorithm,
         "log_level": args.log_level,
         "episodes": 10000,
     })
-    env.run(StockEnv.ModeSL)
+    algorithm = Algorithm(sess, env.market.seq_length, env.market.data_dim, env.market.code_count, **{
+        "enable_saver": True,
+        "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "DualAttnRNN", "model")
+    })
+    env.run(StockEnv.ModeSL, predictor=algorithm)

@@ -19,26 +19,6 @@ class StockEnv(object):
         self.market = Market(codes, start_date, end_date, **options)
 
         try:
-            self.session = options['session']
-        except KeyError:
-            self.session = None
-
-        try:
-            self.agent = options['agent_class'](self.session,
-                                                self.market.trader.action_space,
-                                                self.market.data_dim)
-        except KeyError:
-            self.agent = None
-
-        try:
-            self.predictor = options['predictor_class'](self.session,
-                                                        self.market.seq_length,
-                                                        self.market.data_dim,
-                                                        self.market.code_count)
-        except KeyError:
-            self.predictor = None
-
-        try:
             self.episodes = options['episodes']
         except KeyError:
             self.episodes = 300
@@ -48,33 +28,39 @@ class StockEnv(object):
         except KeyError:
             logging.basicConfig(level=logging.WARNING)
 
-        self._run_methods = [self._run_rl_mode, self._run_sl_mode]
+    def run(self, mode=ModeRL, agent=None, predictor=None):
+        if mode == self.ModeRL:
+            self._run_rl_mode(agent)
+        elif mode == self.ModeSL:
+            self._run_sl_mode(predictor)
+        else:
+            self._run_mix_mode(agent, predictor)
 
-    def run(self, mode=ModeRL):
-        self._run_methods[mode]()
-
-    def _run_rl_mode(self):
-        if not self.agent:
+    def _run_rl_mode(self, agent):
+        if not agent:
             raise ValueError("In RL mode, predictor cannot be None")
         for episode in range(self.episodes):
             self.market.trader.log_asset(episode)
-            self.agent.log_loss(episode)
+            agent.log_loss(episode)
             s = self.market.reset()
             while True:
-                a = self.agent.predict_action(s)
+                a = agent.predict_action(s)
                 a_indices = self._get_a_indices(a)
                 s_next, r, status, info = self.market.forward(a_indices)
                 a = np.array(a_indices).reshape((1, -1))
-                self.agent.save_transition(s, a, r, s_next)
-                self.agent.train()
+                agent.save_transition(s, a, r, s_next)
+                agent.train()
                 s = s_next
                 if status == MarketStatus.NotRunning:
                     break
 
-    def _run_sl_mode(self):
-        if not self.predictor:
+    def _run_sl_mode(self, predictor):
+        if not predictor:
             raise ValueError("In SL mode, predictor cannot be None")
-        self.predictor.train(self.market.get_batch_sequences)
+        predictor.train(self.market.get_batch_sequences)
+
+    def _run_mix_mode(self, agent, predictor):
+        pass
 
     @staticmethod
     def _get_a_indices(a):

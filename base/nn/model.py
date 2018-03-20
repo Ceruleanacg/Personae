@@ -42,8 +42,6 @@ class BaseTFModel(object):
         except KeyError:
             self.save_path = None
 
-        self._init_saver()
-
     def _init_saver(self):
         if self.enable_saver:
             self.saver = tf.train.Saver()

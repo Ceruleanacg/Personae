@@ -4,8 +4,12 @@ This project is trying to implement Papers in Deep Reinforcement Learning and Su
 
 # Content
 
-- DDPG  
-agent/DDPG.py
++ [Deep Deterministic Policy Gradient (DDPG)](algorithm/RL/DDPG.py)   
+Implement of DDPG with TensorFlow.
+
++ [DA-RNN (DualAttnRNN)](algorithm/SL/DualAttnRNN.py)   
+Implement of A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction with TensorFlow.
+https://arxiv.org/abs/1704.02971
 
 # How to Use
 If you use Docker, you can run it by:
