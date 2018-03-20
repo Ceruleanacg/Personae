@@ -9,7 +9,7 @@ Implement of DDPG with TensorFlow.
 
 + [DA-RNN (DualAttnRNN)](algorithm/SL/DualAttnRNN.py)   
 Implement of A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction with TensorFlow.
-https://arxiv.org/abs/1704.02971
+    > arXiv:1704.02971: [A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction](https://arxiv.org/abs/1704.02971)
 
 # How to Use
 If you use Docker, you can run it by:
