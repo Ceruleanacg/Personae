@@ -16,12 +16,13 @@ class StockEnv(object):
     ModeRL, ModeSL, ModeMIX = 0, 1, 2
 
     def __init__(self, codes, start_date="2008-01-01", end_date="2018-01-01", **options):
-        self.market = Market(codes, start_date, end_date, **options)
 
         try:
             self.episodes = options['episodes']
         except KeyError:
             self.episodes = 300
+
+        self.market = Market(codes, start_date, end_date, **options)
 
         try:
             logging.basicConfig(level=options['log_level'])
@@ -57,7 +58,7 @@ class StockEnv(object):
     def _run_sl_mode(self, predictor):
         if not predictor:
             raise ValueError("In SL mode, predictor cannot be None")
-        predictor.train(self.market.get_batch_sequences)
+        predictor.train(self.market.get_batch_data)
 
     def _run_mix_mode(self, agent, predictor):
         pass
@@ -81,6 +82,9 @@ class Market(object):
 
         self.origin_stock_frames = dict()
         self.scaled_stock_frames = dict()
+
+        self.scaled_stocks_y = None
+        self.scaled_stocks_x = None
 
         self.scaled_stock_seqs_x = None
         self.scaled_stock_seqs_y = None
@@ -115,6 +119,11 @@ class Market(object):
         finally:
             self.seq_length = self.seq_length if self.seq_length > 1 else 2
 
+        try:
+            self.training_data_ratio = options['training_data_ratio']
+        except KeyError:
+            self.training_data_ratio = 0.7
+
         self._init_stocks_data(start_date, end_date)
 
         self.trader = Trader(self)
@@ -148,7 +157,7 @@ class Market(object):
     def _init_stocks_data(self, start_date, end_date):
         self._remove_invalid_codes()
         self._init_stock_frames(start_date, end_date)
-        self._init_sequences()
+        self._init_batch_data()
 
     def forward(self, action_keys):
         # Check trader.
@@ -183,11 +192,15 @@ class Market(object):
             raise ValueError("Initialize failed, dates are too short.")
         return self.state
 
-    def get_batch_sequences(self, batch_size=32):
-        batch_indices = np.random.choice(self.sequence_indices, batch_size)
-        batch_x_sequences = self.scaled_stock_seqs_x[batch_indices]
-        batch_y_sequences = self.scaled_stock_seqs_y[batch_indices]
-        return batch_x_sequences, batch_y_sequences
+    def get_batch_data(self, batch_size=32):
+        batch_indices = np.random.choice(self.train_data_indices, batch_size)
+        if not self.use_sequence:
+            batch_x = self.scaled_stocks_x[batch_indices]
+            batch_y = self.scaled_stocks_y[batch_indices]
+        else:
+            batch_x = self.scaled_stock_seqs_x[batch_indices]
+            batch_y = self.scaled_stock_seqs_y[batch_indices]
+        return batch_x, batch_y
 
     def _get_stock_data(self, code, date):
         return self.origin_stock_frames[code].loc[date]
@@ -229,22 +242,25 @@ class Market(object):
             self.origin_stock_frames[code] = origin_stock_frame
             self.scaled_stock_frames[code] = scaled_stock_frame
 
-    def _init_sequences(self):
+    def _init_batch_data(self):
         if self.use_sequence:
+            # Scale dates to valid dates.
             self.dates = self.dates[self.seq_length - 1: -1 - (self.seq_length - 1)]
+            # Init seqs_x, seqs_y.
             scaled_stock_seqs_x, scaled_stock_seqs_y = [], []
             for date_index, date in enumerate(self.dates):
-                # Get x.
-                stock_seq_x = []
-                stock_seq_y = []
+                # Init seq_x, seq_y for each valid date.
+                stock_seq_x, stock_seq_y = [], []
+                # Build seq decreasing by seq_index.
                 for seq_index in range(self.seq_length):
+                    # Init stock list.
                     stocks_x = []
+                    # Get stock for each code.
                     for code in self.codes:
-                        loc_index = date_index + seq_index + self.seq_length - 1
+                        loc_index = date_index - seq_index + self.seq_length - 1
                         stock = self.scaled_stock_frames[code].iloc[loc_index]
                         stocks_x.append(stock)
                     stocks_x = np.array(stocks_x).reshape((-1))
-
                     stock_seq_x.append(stocks_x)
                 stocks_y = []
                 for code in self.codes:
@@ -256,18 +272,36 @@ class Market(object):
                 scaled_stock_seqs_y.append(np.array(stock_seq_y).reshape(-1))
             self.scaled_stock_seqs_x = np.array(scaled_stock_seqs_x)
             self.scaled_stock_seqs_y = np.array(scaled_stock_seqs_y)
-            self.sequence_indices = np.arange(0, len(scaled_stock_seqs_x))
+
+            data_count = len(scaled_stock_seqs_x)
+            self.data_indices = np.arange(0, data_count)
+            self.train_data_indices = self.data_indices[: int(data_count * self.training_data_ratio)]
+        else:
+            self.dates = self.dates[: -1 - 1]
+            scaled_stocks_x, scaled_stocks_y = [], []
+            for index, date in enumerate(self.dates):
+                stock = [self.scaled_stock_frames[code].iloc[index] for code in self.codes]
+                label = [self.scaled_stock_frames[code].iloc[index + 1] for code in self.codes]
+                stock = np.array(stock)
+                label = np.array(label)
+                if self.use_one_hot:
+                    stock = stock.reshape((1, -1))
+                scaled_stocks_x.append(stock)
+                scaled_stocks_y.append(label)
+            self.scaled_stocks_x = np.array(scaled_stocks_x)
+            self.scaled_stocks_y = np.array(scaled_stocks_y)
+
+            data_count = len(scaled_stocks_x)
+            self.data_indices = np.arange(0, data_count)
+            self.train_data_indices = self.data_indices[: int(data_count * self.training_data_ratio)]
 
     def _get_state(self, date):
         if not self.use_sequence:
-            state = [self.scaled_stock_frames[code].loc[date] for code in self.codes]
-            state = np.array(state)
-            if self.use_one_hot:
-                state = state.reshape((1, -1))
-                if self.use_state_mix_cash:
-                    state = np.insert(state, 0, self.trader.cash / self.trader.initial_cash, axis=1)
-                    state = np.insert(state, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
-            return state
+            stock = self.scaled_stocks_x[self.dates.index(date)]
+            if self.use_state_mix_cash:
+                stock = np.insert(stock, 0, self.trader.cash / self.trader.initial_cash, axis=1)
+                stock = np.insert(stock, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
+            return stock
         else:
             return self.scaled_stock_seqs_x[self.dates.index(date)]
 
