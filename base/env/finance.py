@@ -59,8 +59,9 @@ class StockEnv(object):
     def _run_sl_mode(self, predictor):
         if not predictor:
             raise ValueError("In SL mode, predictor cannot be None")
-        # predictor.train(self.market.get_batch_data)
-        predictor.restore()
+        predictor.train(self.market.get_batch_data)
+        # TODO - Restore Place.
+        # predictor.restore()
         x, label = self.market.get_test_data()
         y = predictor.predict(x)
         data_ploter.plot_stock_series(self.market.codes, y, label, predictor.save_path)

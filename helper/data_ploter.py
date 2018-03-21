@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 
 def plot_stock_series(codes, y, label, save_path):
-    plt.figure(figsize=(16, 8))
+    plt.figure(figsize=(30, 10))
     plt.title('Stock Price Series')
     for index, code in enumerate(codes):
         plt.subplot(100 + 10 * len(codes) + index + 1)
