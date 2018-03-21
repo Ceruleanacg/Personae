@@ -1,6 +1,6 @@
-# mayu - RL & SL Methods and Environment For Trading
+# Personae - RL & SL Methods and Environment For Trading
 
-Mayu is a repo of implements and enviorment of Deep Reinforcement Learning & Supervised Learning.  
+Personae is a repo of implements and enviorment of Deep Reinforcement Learning & Supervised Learning.  
 This repo tries to implement new methods and papers in different ways (TensorFlow or PyTorch) and test them in Financial Market (Stock Market).
 
 # Content
