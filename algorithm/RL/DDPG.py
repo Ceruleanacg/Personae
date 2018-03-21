@@ -195,7 +195,6 @@ if __name__ == '__main__':
     sess = tf.Session(config=config)
     env = StockEnv(args.codes, **{
         "session": sess,
-        "agent_class": Algorithm,
         "log_level": args.log_level
     })
     env.run(env.ModeRL, agent=Algorithm(sess, env.market.trader.action_space, env.market.data_dim))

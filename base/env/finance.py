@@ -8,6 +8,7 @@ import math
 
 from base.model.finance import Stock
 from sklearn import preprocessing
+from helper import data_ploter
 from enum import Enum
 
 
@@ -58,7 +59,11 @@ class StockEnv(object):
     def _run_sl_mode(self, predictor):
         if not predictor:
             raise ValueError("In SL mode, predictor cannot be None")
-        predictor.train(self.market.get_batch_data)
+        # predictor.train(self.market.get_batch_data)
+        predictor.restore()
+        x, label = self.market.get_test_data()
+        y = predictor.predict(x)
+        data_ploter.plot_stock_series(self.market.codes, y, label, predictor.save_path)
 
     def _run_mix_mode(self, agent, predictor):
         pass
@@ -202,6 +207,15 @@ class Market(object):
             batch_y = self.scaled_stock_seqs_y[batch_indices]
         return batch_x, batch_y
 
+    def get_test_data(self):
+        if not self.use_sequence:
+            test_x = self.scaled_stocks_x[self.test_data_indices]
+            test_y = self.scaled_stocks_y[self.test_data_indices]
+        else:
+            test_x = self.scaled_stock_seqs_x[self.test_data_indices]
+            test_y = self.scaled_stock_seqs_y[self.test_data_indices]
+        return test_x, test_y
+
     def _get_stock_data(self, code, date):
         return self.origin_stock_frames[code].loc[date]
 
@@ -276,6 +290,7 @@ class Market(object):
             data_count = len(scaled_stock_seqs_x)
             self.data_indices = np.arange(0, data_count)
             self.train_data_indices = self.data_indices[: int(data_count * self.training_data_ratio)]
+            self.test_data_indices = self.data_indices[int(data_count * self.training_data_ratio):]
         else:
             self.dates = self.dates[: -1 - 1]
             scaled_stocks_x, scaled_stocks_y = [], []
@@ -294,6 +309,7 @@ class Market(object):
             data_count = len(scaled_stocks_x)
             self.data_indices = np.arange(0, data_count)
             self.train_data_indices = self.data_indices[: int(data_count * self.training_data_ratio)]
+            self.test_data_indices = self.data_indices[int(data_count * self.training_data_ratio):]
 
     def _get_state(self, date):
         if not self.use_sequence:

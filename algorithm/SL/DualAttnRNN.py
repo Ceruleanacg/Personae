@@ -75,7 +75,6 @@ if __name__ == '__main__':
     sess = tf.Session(config=config)
     env = StockEnv(args.codes, **{
         "use_sequence": True,
-        "predictor_class": Algorithm,
         "log_level": args.log_level,
         "episodes": 10000,
     })
