@@ -61,7 +61,7 @@ class Algorithm(BaseRLTFModel):
         # Initialize variables.
         self.session.run(tf.global_variables_initializer())
 
-    def train(self, episode):
+    def train(self):
         if self.buffer_length < self.buffer_size:
             return
         self.session.run([self.update_a, self.update_c])

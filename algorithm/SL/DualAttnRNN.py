@@ -79,10 +79,7 @@ def main(args):
         "enable_saver": True,
     })
     algorithm.run()
-
-    # x, label = self.market.get_test_data()
-    # y = predictor.predict(x)
-    # data_ploter.plot_stock_series(self.market.codes, y, label, predictor.save_path)
+    algorithm.evaluate(env.get_test_data(), env.codes)
 
 
 if __name__ == '__main__':
