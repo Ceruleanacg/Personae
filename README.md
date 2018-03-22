@@ -13,6 +13,10 @@ Implement of DDPG with TensorFlow.
 Implement of arXiv:1704.02971, DA-RNN with TensorFlow.
     > arXiv:1704.02971: [A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction](https://arxiv.org/abs/1704.02971)
 
+<p align='center'>
+  <img src='checkpoints/SL/DualAttnRNN/model.png'>
+</p>
+
 # Requirements
 
 Before you start testing, following requirements are needed.
@@ -25,6 +29,7 @@ Before you start testing, following requirements are needed.
 - sklearn
 - mongoengine
 - tushare
+- matplotlib
 - CUDA (option)
 - Docker (option)
 

@@ -86,7 +86,7 @@ class BaseTFModel(object):
 class BaseRLTFModel(BaseTFModel):
 
     def __init__(self, session, env, a_space, s_space, **options):
-        super(BaseRLTFModel, self).__init__(session, env)
+        super(BaseRLTFModel, self).__init__(session, env, **options)
 
         # Initialize evn parameters.
         self.a_space, self.s_space = a_space, s_space
@@ -162,7 +162,7 @@ class BaseRLTFModel(BaseTFModel):
 class BaseSLTFModel(BaseTFModel):
 
     def __init__(self, session, env, **options):
-        super(BaseSLTFModel, self).__init__(session, env)
+        super(BaseSLTFModel, self).__init__(session, env, **options)
 
         # Initialize parameters.
         self.x, self.label, self.y, self.loss = None, None, None, None
