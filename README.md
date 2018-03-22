@@ -15,10 +15,11 @@ Implement of arXiv:1704.02971, DA-RNN with TensorFlow.
 
 # Experiments
 
-+ [DA-RNN (DualAttnRNN)]()
++ [DA-RNN (DualAttnRNN)](algorithm/SL/DualAttnRNN.py)
 
 <p align='center'>
   <img src='checkpoints/SL/DualAttnRNN/model.png'>
+   <em>Experiments on Four Bank Stocks</em>
 </p>
 
 
