@@ -115,8 +115,8 @@ class Market(object):
                 action(code, stock, 100, stock_next)
             except KeyError:
                 logging.info("Current date cannot trade for code: {}.".format(code))
-
         # Update and return the next state.
+        self.trader.history_profits.append(self.trader.profits)
         try:
             self.current_date, self.next_date = next(self.iter_dates), next(self.iter_dates)
             return self.state, self.trader.reward, self.Running, 0
@@ -278,6 +278,7 @@ class Trader(object):
         self.reward = 0
         self.positions = []
         self.initial_cash = cash
+        self.history_profits = []
         self.cur_action_code = None
         self.cur_action_status = None
         self.action_dic = {ActionCode.Buy: self.buy, ActionCode.Hold: self.hold, ActionCode.Sell: self.sell}
@@ -350,6 +351,7 @@ class Trader(object):
     def reset(self):
         self.cash = self.initial_cash
         self.positions = []
+        self.history_profits = []
 
     def reset_reward(self):
         self.reward = 0

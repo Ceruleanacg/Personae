@@ -94,7 +94,7 @@ class BaseRLTFModel(BaseTFModel):
         try:
             self.episodes = options['episodes']
         except KeyError:
-            self.episodes = 300
+            self.episodes = 50
 
         try:
             self.gamma = options['gamma']
@@ -119,8 +119,10 @@ class BaseRLTFModel(BaseTFModel):
     def run(self):
         if self.mode != 'train':
             self.restore()
+            self.episodes = 1
         for episode in range(self.episodes):
-            self.log_loss(episode)
+            if self.mode == 'train':
+                self.log_loss(episode)
             s = self.env.reset()
             while True:
                 a = self.predict(s)
@@ -136,6 +138,14 @@ class BaseRLTFModel(BaseTFModel):
                     break
             if self.mode == 'train' and self.enable_saver and episode % 10 == 0:
                 self.save(episode)
+
+    def evaluate(self):
+        profits_count = len(self.env.trader.history_profits)
+        data_ploter.plot_profits_series(
+            [self.env.trader.initial_cash] * profits_count,
+            [self.env.trader.initial_cash + profits for profits in self.env.trader.history_profits],
+            self.save_path
+        )
 
     def save(self, episode):
         self.saver.save(self.session, self.save_path)

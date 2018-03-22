@@ -174,6 +174,7 @@ def main(args):
         "enable_saver": True,
     })
     algo.run()
+    algo.evaluate()
 
 
 if __name__ == '__main__':
