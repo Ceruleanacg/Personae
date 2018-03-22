@@ -94,7 +94,7 @@ class BaseRLTFModel(BaseTFModel):
         try:
             self.episodes = options['episodes']
         except KeyError:
-            self.episodes = 50
+            self.episodes = 100
 
         try:
             self.gamma = options['gamma']
@@ -121,8 +121,7 @@ class BaseRLTFModel(BaseTFModel):
             self.restore()
             self.episodes = 1
         for episode in range(self.episodes):
-            if self.mode == 'train':
-                self.log_loss(episode)
+            self.log_loss(episode)
             s = self.env.reset()
             while True:
                 a = self.predict(s)

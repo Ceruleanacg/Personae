@@ -24,8 +24,8 @@ class Market(object):
         self.origin_stock_frames = dict()
         self.scaled_stock_frames = dict()
 
-        self.scaled_stocks_y = None
         self.scaled_stocks_x = None
+        self.scaled_stocks_y = None
 
         self.scaled_stock_seqs_x = None
         self.scaled_stock_seqs_y = None
@@ -69,8 +69,6 @@ class Market(object):
 
         self.trader = Trader(self)
 
-        self.iter_dates = iter(self.dates)
-
     @property
     def state(self):
         return self._get_state(self.current_date)
@@ -94,11 +92,6 @@ class Market(object):
             else:
                 data_dim = len(self.codes) * data_frame.shape[1]
             return data_dim
-
-    def _init_stocks_data(self, start_date, end_date):
-        self._remove_invalid_codes()
-        self._init_stock_frames(start_date, end_date)
-        self._init_batch_data()
 
     def forward(self, action_keys):
         # Check trader.
@@ -152,6 +145,13 @@ class Market(object):
             test_y = self.scaled_stock_seqs_y[self.test_data_indices]
         return test_x, test_y
 
+    def _init_stocks_data(self, start_date, end_date):
+        self._remove_invalid_codes()
+        self._init_stock_frames(start_date, end_date)
+        self._reindex_stock_frames()
+        self._init_batch_data()
+        self._init_indices()
+
     def _get_stock_data(self, code, date):
         return self.origin_stock_frames[code].loc[date]
 
@@ -164,7 +164,7 @@ class Market(object):
         self.codes = valid_codes
 
     def _init_stock_frames(self, start_date, end_date):
-        dates_stocks_pairs = []
+        columns, dates_set = ['open', 'high', 'low', 'close', 'volume'], set()
         # Init stocks data.
         for code in self.codes:
             # Get stocks data by code.
@@ -172,80 +172,76 @@ class Market(object):
             # Init stocks dicts.
             stock_dicts = [stock.to_dic() for stock in stocks]
             # Get dates and stock data, build frames, save date.
-            dates, stocks = [stock[1] for stock in stock_dicts], [stock[2:] for stock in stock_dicts]
-            dates_stocks_pairs.append((dates, stocks))
-            [self.dates.append(date) for date in dates if date not in self.dates]
+            stocks_date, stocks_data = [stock[1] for stock in stock_dicts], [stock[2:] for stock in stock_dicts]
+            # Update dates set.
+            dates_set = dates_set.union(stocks_date)
             # Cache stock data.
-            scaler = preprocessing.MinMaxScaler()
-            stocks_scaled = scaler.fit_transform(stocks)
-            columns = ['open', 'high', 'low', 'close', 'volume']
-            origin_stock_frame = pd.DataFrame(data=stocks, index=dates, columns=columns)
-            scaled_stock_frame = pd.DataFrame(data=stocks_scaled, index=dates, columns=columns)
+            stocks_scaled = preprocessing.MinMaxScaler().fit_transform(stocks_data)
+            origin_stock_frame = pd.DataFrame(data=stocks_data, index=stocks_date, columns=columns)
+            scaled_stock_frame = pd.DataFrame(data=stocks_scaled, index=stocks_date, columns=columns)
             self.origin_stock_frames[code] = origin_stock_frame
             self.scaled_stock_frames[code] = scaled_stock_frame
 
-        self.dates = sorted(self.dates)
+        self.dates = sorted(list(dates_set))
+        self.iter_dates = iter(self.dates)
 
+    def _reindex_stock_frames(self):
         for code in self.codes:
-            origin_stock_frame = self.origin_stock_frames[code].reindex(self.dates, method='bfill')
-            scaled_stock_frame = self.scaled_stock_frames[code].reindex(self.dates, method='bfill')
-            self.origin_stock_frames[code] = origin_stock_frame
-            self.scaled_stock_frames[code] = scaled_stock_frame
+            origin_stock_frame = self.origin_stock_frames[code]
+            scaled_stock_frame = self.scaled_stock_frames[code]
+            self.origin_stock_frames[code] = origin_stock_frame.reindex(self.dates, method='bfill')
+            self.scaled_stock_frames[code] = scaled_stock_frame.reindex(self.dates, method='bfill')
 
     def _init_batch_data(self):
         if self.use_sequence:
-            # Scale dates to valid dates.
-            self.dates = self.dates[self.seq_length - 1: -1 - (self.seq_length - 1)]
-            # Init seqs_x, seqs_y.
-            scaled_stock_seqs_x, scaled_stock_seqs_y = [], []
-            for date_index, date in enumerate(self.dates):
-                # Init seq_x, seq_y for each valid date.
-                stock_seq_x, stock_seq_y = [], []
-                # Build seq decreasing by seq_index.
-                for seq_index in range(self.seq_length):
-                    # Init stock list.
-                    stocks_x = []
-                    # Get stock for each code.
-                    for code in self.codes:
-                        loc_index = date_index - seq_index + self.seq_length - 1
-                        stock = self.scaled_stock_frames[code].iloc[loc_index]
-                        stocks_x.append(stock)
-                    stocks_x = np.array(stocks_x).reshape((-1))
-                    stock_seq_x.append(stocks_x)
-                stocks_y = []
-                for code in self.codes:
-                    label = self.scaled_stock_frames[code]['close'].iloc[date_index + self.seq_length]
-                    stocks_y.append(label)
-                stocks_y = np.array(stocks_y)
-                stock_seq_y.append(stocks_y)
-                scaled_stock_seqs_x.append(np.array(stock_seq_x))
-                scaled_stock_seqs_y.append(np.array(stock_seq_y).reshape(-1))
-            self.scaled_stock_seqs_x = np.array(scaled_stock_seqs_x)
-            self.scaled_stock_seqs_y = np.array(scaled_stock_seqs_y)
-
-            data_count = len(scaled_stock_seqs_x)
-            self.data_indices = np.arange(0, data_count)
-            self.train_data_indices = self.data_indices[: int(data_count * self.training_data_ratio)]
-            self.test_data_indices = self.data_indices[int(data_count * self.training_data_ratio):]
+            self._init_sequence_data()
         else:
-            self.dates = self.dates[: -1 - 1]
-            scaled_stocks_x, scaled_stocks_y = [], []
-            for index, date in enumerate(self.dates):
-                stock = [self.scaled_stock_frames[code].iloc[index] for code in self.codes]
-                label = [self.scaled_stock_frames[code].iloc[index + 1] for code in self.codes]
-                stock = np.array(stock)
-                label = np.array(label)
-                if self.use_one_hot:
-                    stock = stock.reshape((1, -1))
-                scaled_stocks_x.append(stock)
-                scaled_stocks_y.append(label)
-            self.scaled_stocks_x = np.array(scaled_stocks_x)
-            self.scaled_stocks_y = np.array(scaled_stocks_y)
+            self._init_series_data()
 
-            data_count = len(scaled_stocks_x)
-            self.data_indices = np.arange(0, data_count)
-            self.train_data_indices = self.data_indices[: int(data_count * self.training_data_ratio)]
-            self.test_data_indices = self.data_indices[int(data_count * self.training_data_ratio):]
+    def _init_sequence_data(self):
+        # Init seqs_x, seqs_y.
+        scaled_stock_seqs_x, scaled_stock_seqs_y = [], []
+        for date_index, date in enumerate(self.dates[:-1 - 1]):
+            # wait until valid date index.
+            if date_index < self.seq_length:
+                continue
+            stocks_data_x, stocks_data_y = [], []
+            for code in self.codes:
+                stocks = self.scaled_stock_frames[code].iloc[date_index - self.seq_length:date_index + 1]
+                stocks_data_x.append(np.array(stocks[:-1]))
+                stocks_data_y.append(np.array(stocks.iloc[-1]['close']))
+            stocks_data_x = np.array(stocks_data_x)
+            stocks_data_y = np.array(stocks_data_y)
+            stock_seq_x, stock_seq_y = [], stocks_data_y
+            for seq_index in range(self.seq_length):
+                stock_seq_x.append(stocks_data_x[:, seq_index, :].reshape((-1)))
+            stock_seq_x = np.array(stock_seq_x)
+            scaled_stock_seqs_x.append(np.array(stock_seq_x))
+            scaled_stock_seqs_y.append(stock_seq_y)
+        self.scaled_stock_seqs_x = np.array(scaled_stock_seqs_x)
+        self.scaled_stock_seqs_y = np.array(scaled_stock_seqs_y)
+        self.data_count = len(scaled_stock_seqs_x)
+
+    def _init_series_data(self):
+        self.dates = self.dates[: -1 - 1]
+        scaled_stocks_x, scaled_stocks_y = [], []
+        for index, date in enumerate(self.dates):
+            stock = [self.scaled_stock_frames[code].iloc[index] for code in self.codes]
+            label = [self.scaled_stock_frames[code].iloc[index + 1] for code in self.codes]
+            stock = np.array(stock)
+            label = np.array(label)
+            if self.use_one_hot:
+                stock = stock.reshape((1, -1))
+            scaled_stocks_x.append(stock)
+            scaled_stocks_y.append(label)
+        self.scaled_stocks_x = np.array(scaled_stocks_x)
+        self.scaled_stocks_y = np.array(scaled_stocks_y)
+        self.data_count = len(scaled_stocks_x)
+
+    def _init_indices(self):
+        self.data_indices = np.arange(0, self.data_count)
+        self.train_data_indices = self.data_indices[: int(self.data_count * self.training_data_ratio)]
+        self.test_data_indices = self.data_indices[int(self.data_count * self.training_data_ratio):]
 
     def _get_state(self, date):
         if not self.use_sequence:
