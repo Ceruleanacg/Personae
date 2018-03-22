@@ -8,78 +8,13 @@ import math
 
 from base.model.finance import Stock
 from sklearn import preprocessing
-from helper import data_ploter
 from enum import Enum
 
 
-class StockEnv(object):
-
-    ModeRL, ModeSL, ModeMIX = 0, 1, 2
-
-    def __init__(self, codes, start_date="2008-01-01", end_date="2018-01-01", **options):
-
-        try:
-            self.episodes = options['episodes']
-        except KeyError:
-            self.episodes = 300
-
-        self.market = Market(codes, start_date, end_date, **options)
-
-        try:
-            logging.basicConfig(level=options['log_level'])
-        except KeyError:
-            logging.basicConfig(level=logging.WARNING)
-
-    def run(self, mode=ModeRL, agent=None, predictor=None):
-        if mode == self.ModeRL:
-            self._run_rl_mode(agent)
-        elif mode == self.ModeSL:
-            self._run_sl_mode(predictor)
-        else:
-            self._run_mix_mode(agent, predictor)
-
-    def _run_rl_mode(self, agent):
-        if not agent:
-            raise ValueError("In RL mode, predictor cannot be None")
-        for episode in range(self.episodes):
-            self.market.trader.log_asset(episode)
-            agent.log_loss(episode)
-            s = self.market.reset()
-            while True:
-                a = agent.predict_action(s)
-                a_indices = self._get_a_indices(a)
-                s_next, r, status, info = self.market.forward(a_indices)
-                a = np.array(a_indices).reshape((1, -1))
-                agent.save_transition(s, a, r, s_next)
-                agent.train()
-                s = s_next
-                if status == MarketStatus.NotRunning:
-                    break
-
-    def _run_sl_mode(self, predictor):
-        if not predictor:
-            raise ValueError("In SL mode, predictor cannot be None")
-        predictor.train(self.market.get_batch_data)
-        # TODO - Restore Place.
-        # predictor.restore()
-        x, label = self.market.get_test_data()
-        y = predictor.predict(x)
-        data_ploter.plot_stock_series(self.market.codes, y, label, predictor.save_path)
-
-    def _run_mix_mode(self, agent, predictor):
-        pass
-
-    @staticmethod
-    def _get_a_indices(a):
-        return np.where(a > 1 / 3, 1, np.where(a < - 1 / 3, -1, 0)).astype(np.int32)[0].tolist()
-
-
-class MarketStatus(Enum):
-    Running = 0
-    NotRunning = 1
-
-
 class Market(object):
+
+    Running = 0
+    Done = -1
 
     def __init__(self, codes, start_date="2008-01-01", end_date="2018-01-01", **options):
 
@@ -184,9 +119,9 @@ class Market(object):
         # Update and return the next state.
         try:
             self.current_date, self.next_date = next(self.iter_dates), next(self.iter_dates)
-            return self.state, self.trader.reward, MarketStatus.Running, 0
+            return self.state, self.trader.reward, self.Running, 0
         except StopIteration:
-            return self.state, self.trader.reward, MarketStatus.NotRunning, -1
+            return self.state, self.trader.reward, self.Done, -1
 
     def reset(self):
         self.trader.reset()
@@ -512,7 +447,7 @@ def main():
         market.trader.log_asset("1")
         market.trader.log_reward()
 
-        if status == MarketStatus.NotRunning:
+        if status == market.Done:
             break
 
 

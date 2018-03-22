@@ -1,18 +1,151 @@
 # coding=utf-8
 
 import tensorflow as tf
+import numpy as np
 import logging
 
 from abc import abstractmethod
 from tensorflow.contrib import rnn
 
 
-class BaseTFModel(object):
+class BaseRLTFModel(object):
 
-    def __init__(self, session, **options):
+    def __init__(self, session, env, a_space, s_space, **options):
+        # Initialize session.
+        self.session = session
+
+        # Initialize evn parameters.
+        self.env, self.a_space, self.s_space = env, a_space, s_space
+
+        try:
+            self.episodes = options['episodes']
+        except KeyError:
+            self.episodes = 300
+
+        try:
+            self.learning_rate = options['learning_rate']
+        except KeyError:
+            self.learning_rate = 0.001
+
+        try:
+            self.gamma = options['gamma']
+        except KeyError:
+            self.gamma = 0.9
+
+        try:
+            self.tau = options['tau']
+        except KeyError:
+            self.tau = 0.01
+
+        try:
+            self.batch_size = options['batch_size']
+        except KeyError:
+            self.batch_size = 32
+
+        try:
+            self.buffer_size = options['buffer_size']
+        except KeyError:
+            self.buffer_size = 10000
+
+        try:
+            self.enable_saver = options["enable_saver"]
+        except KeyError:
+            self.enable_saver = False
+
+        try:
+            self.save_path = options["save_path"]
+        except KeyError:
+            self.save_path = None
+
+        try:
+            self.mode = options['mode']
+        except KeyError:
+            self.mode = 'train'
+
+        try:
+            self.save_episode = options["save_episode"]
+        except KeyError:
+            self.save_episode = 10
+
+        try:
+            logging.basicConfig(level=options['log_level'])
+        except KeyError:
+            logging.basicConfig(level=logging.WARNING)
+
+    def run(self):
+        if self.mode != 'train':
+            self.restore()
+        for episode in range(self.episodes):
+            self.log_loss(episode)
+            s = self.env.reset()
+            while True:
+                a = self.predict(s)
+                a = self.get_a_indices(a)
+                s_next, r, status, info = self.env.forward(a)
+                a = np.array(a).reshape((1, -1))
+                if self.mode == 'train':
+                    self.save_transition(s, a, r, s_next)
+                    self.train(episode)
+                s = s_next
+                if status == self.env.Done:
+                    self.env.trader.log_asset(episode)
+                    break
+            if self.mode == 'train' and self.enable_saver and episode % 10 == 0:
+                self.save(episode)
+
+    def save(self, episode):
+        self.saver.save(self.session, self.save_path)
+        logging.warning("Episode: {} | Saver reach checkpoint.".format(episode))
+
+    def restore(self):
+        self.saver.restore(self.session, self.save_path)
+
+    def _init_saver(self):
+        if self.enable_saver:
+            self.saver = tf.train.Saver()
+
+    @abstractmethod
+    def _init_input(self, *args):
+        pass
+
+    @abstractmethod
+    def _init_nn(self, *args):
+        pass
+
+    @abstractmethod
+    def _init_op(self):
+        pass
+
+    @abstractmethod
+    def train(self, episode):
+        pass
+
+    @abstractmethod
+    def predict(self, s):
+        pass
+
+    @abstractmethod
+    def save_transition(self, s, a, r, s_next):
+        pass
+
+    @abstractmethod
+    def log_loss(self, episode):
+        pass
+
+    @staticmethod
+    def get_a_indices(a):
+        a = np.where(a > 1 / 3, 1, np.where(a < - 1 / 3, -1, 0)).astype(np.int32)[0].tolist()
+        return a
+
+
+class BaseSLTFModel(object):
+
+    def __init__(self, session, env, **options):
 
         # Initialize session.
         self.session = session
+
+        self.env = env
 
         # Initialize parameters.
         self.x, self.label, self.y, self.loss = None, None, None, None
@@ -21,6 +154,11 @@ class BaseTFModel(object):
             self.learning_rate = options["learning_rate"]
         except KeyError:
             self.learning_rate = 0.0003
+
+        try:
+            self.batch_size = options['batch_size']
+        except KeyError:
+            self.batch_size = 32
 
         try:
             self.train_steps = options["train_steps"]
@@ -42,9 +180,25 @@ class BaseTFModel(object):
         except KeyError:
             self.save_path = None
 
+        try:
+            self.mode = options['mode']
+        except KeyError:
+            self.mode = 'train'
+
+        try:
+            logging.basicConfig(level=options['log_level'])
+        except KeyError:
+            logging.basicConfig(level=logging.WARNING)
+
     def _init_saver(self):
         if self.enable_saver:
             self.saver = tf.train.Saver()
+
+    def run(self):
+        if self.mode == 'train':
+            self.train()
+        else:
+            self.restore()
 
     def predict(self, x):
         return self.session.run(self.y, feed_dict={self.x: x})
@@ -56,7 +210,7 @@ class BaseTFModel(object):
 
     def save(self, step):
         self.saver.save(self.session, self.save_path)
-        logging.warning("Step: {} | Saver reach checkpoint.".format(step))
+        logging.warning("Step: {} | Saver reach checkpoint.".format(step + 1))
 
     def restore(self):
         self.saver.restore(self.session, self.save_path)
@@ -86,3 +240,8 @@ class BaseTFModel(object):
     @abstractmethod
     def _init_op(self):
         pass
+
+    @abstractmethod
+    def train(self):
+        pass
+

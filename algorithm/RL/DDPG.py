@@ -4,48 +4,21 @@ import tensorflow as tf
 import numpy as np
 
 import logging
+import os
 
 from algorithm import config
-from base.env.finance import StockEnv
+from base.env.finance import Market
+from base.nn.model import BaseRLTFModel
+from checkpoints import CHECKPOINTS_DIR
 from helper.args_parser import model_launcher_parser
 
 
-class Algorithm(object):
+class Algorithm(BaseRLTFModel):
 
-    def __init__(self, session, a_space, s_space, **options):
-
-        # Initialize session.
-        self.session = session
-
-        # Initialize evn parameters.
-        self.a_space, self.s_space = a_space, s_space
+    def __init__(self, session, env, a_space, s_space, **options):
+        super(Algorithm, self).__init__(session, env, a_space, s_space, **options)
 
         self.actor_loss, self.critic_loss = .0, .0
-
-        try:
-            self.learning_rate = options['learning_rate']
-        except KeyError:
-            self.learning_rate = 0.001
-
-        try:
-            self.gamma = options['gamma']
-        except KeyError:
-            self.gamma = 0.9
-
-        try:
-            self.tau = options['tau']
-        except KeyError:
-            self.tau = 0.01
-
-        try:
-            self.batch_size = options['batch_size']
-        except KeyError:
-            self.batch_size = 32
-
-        try:
-            self.buffer_size = options['buffer_size']
-        except KeyError:
-            self.buffer_size = 10000
 
         # Initialize buffer.
         self.buffer = np.zeros((self.buffer_size, self.s_space * 2 + self.a_space + 1))
@@ -54,6 +27,7 @@ class Algorithm(object):
         self._init_input()
         self._init_nn()
         self._init_op()
+        self._init_saver()
 
     def _init_input(self):
         self.s = tf.placeholder(tf.float32, [None, self.s_space], 'state')
@@ -87,7 +61,7 @@ class Algorithm(object):
         # Initialize variables.
         self.session.run(tf.global_variables_initializer())
 
-    def train(self):
+    def train(self, episode):
         if self.buffer_length < self.buffer_size:
             return
         self.session.run([self.update_a, self.update_c])
@@ -95,7 +69,7 @@ class Algorithm(object):
         self.critic_loss, _ = self.session.run([self.c_loss, self.c_train_op], {self.s: s, self.a_predict: a, self.r: r, self.s_next: s_next})
         self.actor_loss, _ = self.session.run([self.a_loss, self.a_train_op], {self.s: s})
 
-    def predict_action(self, s):
+    def predict(self, s):
         a = self.session.run(self.a_predict, {self.s: s})
         return a
 
@@ -190,12 +164,19 @@ class Algorithm(object):
             return q_value
 
 
-if __name__ == '__main__':
-    args = model_launcher_parser.parse_args()
+def main(args):
     sess = tf.Session(config=config)
-    env = StockEnv(args.codes, **{
-        "session": sess,
-        "log_level": args.log_level
+    env = Market(args.codes)
+    algo = Algorithm(sess, env, env.trader.action_space, env.data_dim, **{
+        "mode": args.mode,
+        "log_level": args.log_level,
+        "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "DDPG", "model"),
+        "enable_saver": True,
     })
-    env.run(env.ModeRL, agent=Algorithm(sess, env.market.trader.action_space, env.market.data_dim))
+    algo.run()
+
+
+if __name__ == '__main__':
+    main(model_launcher_parser.parse_args())
+
 

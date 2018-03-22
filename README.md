@@ -49,7 +49,7 @@ docker run -t -v local_project_dir:docker_project_dir --network=your_network cer
 ```
 But remember to set stock codes that you want to crawl, the default are:
 ```
-codes = ["600036", "601328", "601998", "601288"]
+codes = ["600036", "601328", "601998", "601398"]
 ```
 And they can be modified in:   
 + [Default Args Parser](helper/args_parser.py)

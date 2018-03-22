@@ -5,15 +5,15 @@ import logging
 import os
 
 from algorithm import config
-from base.nn.model import BaseTFModel
-from base.env.finance import StockEnv
+from base.env.finance import Market
+from base.nn.model import BaseSLTFModel
 from checkpoints import CHECKPOINTS_DIR
 from helper.args_parser import model_launcher_parser
 
 
-class Algorithm(BaseTFModel):
-    def __init__(self, session, seq_length, x_space, y_space, **options):
-        super(Algorithm, self).__init__(session, **options)
+class Algorithm(BaseSLTFModel):
+    def __init__(self, session, env, seq_length, x_space, y_space, **options):
+        super(Algorithm, self).__init__(session, env, **options)
 
         self.seq_length, self.x_space, self.y_space = seq_length, x_space, y_space
 
@@ -59,9 +59,9 @@ class Algorithm(BaseTFModel):
         self.train_op = self.optimizer.minimize(self.loss)
         self.session.run(tf.global_variables_initializer())
 
-    def train(self, get_batch_func, batch_size=32):
+    def train(self):
         for step in range(self.train_steps):
-            batch_x, batch_y = get_batch_func(batch_size)
+            batch_x, batch_y = self.env.get_batch_data(self.batch_size)
             _, loss = self.session.run([self.train_op, self.loss], feed_dict={self.x: batch_x, self.label: batch_y})
             if (step + 1) % 1000 == 0:
                 logging.warning("Step: {0} | Loss: {1:.7f}".format(step + 1, loss))
@@ -70,16 +70,20 @@ class Algorithm(BaseTFModel):
                     self.save(step)
 
 
-if __name__ == '__main__':
-    args = model_launcher_parser.parse_args()
-    sess = tf.Session(config=config)
-    env = StockEnv(args.codes, **{
-        "use_sequence": True,
+def main(args):
+    env = Market(args.codes, **{"use_sequence": True})
+    algorithm = Algorithm(tf.Session(config=config), env, env.seq_length, env.data_dim, env.code_count, **{
+        "mode": args.mode,
         "log_level": args.log_level,
-        "episodes": 10000,
-    })
-    algorithm = Algorithm(sess, env.market.seq_length, env.market.data_dim, env.market.code_count, **{
+        "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "DualAttnRNN", "model"),
         "enable_saver": True,
-        "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "DualAttnRNN", "model")
     })
-    env.run(StockEnv.ModeSL, predictor=algorithm)
+    algorithm.run()
+
+    # x, label = self.market.get_test_data()
+    # y = predictor.predict(x)
+    # data_ploter.plot_stock_series(self.market.codes, y, label, predictor.save_path)
+
+
+if __name__ == '__main__':
+    main(model_launcher_parser.parse_args())
