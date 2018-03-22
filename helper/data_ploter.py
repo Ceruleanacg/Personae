@@ -1,12 +1,14 @@
 # coding=utf-8
 
 import matplotlib.pyplot as plt
+import math
 
 
 def plot_stock_series(codes, y, label, save_path):
-    plt.figure(figsize=(35, 5))
+    row, col = int(math.ceil(len(codes) / 2)), int(math.ceil(len(codes) / 2))
+    plt.figure(figsize=(40, 25))
     for index, code in enumerate(codes):
-        plt.subplot(100 + 10 * len(codes) + index + 1)
+        plt.subplot(row * 100 + col * 10 + (index + 1))
         plt.title(code)
         plt.plot(y[:, index], label='Predicted')
         plt.plot(label[:, index], label='Real')

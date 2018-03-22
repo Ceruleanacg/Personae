@@ -3,7 +3,7 @@
 Personae is a repo of implements and enviorment of Deep Reinforcement Learning & Supervised Learning.  
 This repo tries to implement new methods and papers in different ways (TensorFlow or PyTorch) and test them in Financial Market (Stock Market).
 
-# Content
+# Contents
 
 + [Deep Deterministic Policy Gradient (DDPG)](algorithm/RL/DDPG.py)   
 Implement of DDPG with TensorFlow.
@@ -13,9 +13,14 @@ Implement of DDPG with TensorFlow.
 Implement of arXiv:1704.02971, DA-RNN with TensorFlow.
     > arXiv:1704.02971: [A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction](https://arxiv.org/abs/1704.02971)
 
+# Experiments
+
++ [DA-RNN (DualAttnRNN)]()
+
 <p align='center'>
   <img src='checkpoints/SL/DualAttnRNN/model.png'>
 </p>
+
 
 # Requirements
 
