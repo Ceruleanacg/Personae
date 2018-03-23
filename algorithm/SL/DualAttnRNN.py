@@ -76,7 +76,7 @@ def main(args):
         "mode": args.mode,
         "log_level": args.log_level,
         "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "DualAttnRNN", "model"),
-        "enable_saver": True,
+        # "enable_saver": True,
     })
     algorithm.run()
     algorithm.evaluate(env.get_test_data(), env.codes)

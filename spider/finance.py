@@ -3,7 +3,7 @@
 import tushare as ts
 import logging
 
-from base.model.finance import Stock
+from base.model.document import Stock
 from helper.args_parser import spider_parser
 
 

@@ -168,11 +168,11 @@ def main(args):
     sess = tf.Session(config=config)
     env = Market(args.codes)
     algo = Algorithm(sess, env, env.trader.action_space, env.data_dim, **{
-        # "mode": args.mode,
-        "mode": "test",
+        "mode": args.mode,
+        # "mode": "test",
         "log_level": args.log_level,
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "DDPG", "model"),
-        "enable_saver": True,
+        # "enable_saver": True,
     })
     algo.run()
     algo.evaluate()
