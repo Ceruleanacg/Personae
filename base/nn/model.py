@@ -94,7 +94,7 @@ class BaseRLTFModel(BaseTFModel):
         try:
             self.episodes = options['episodes']
         except KeyError:
-            self.episodes = 100
+            self.episodes = 30
 
         try:
             self.gamma = options['gamma']
@@ -119,30 +119,38 @@ class BaseRLTFModel(BaseTFModel):
     def run(self):
         if self.mode != 'train':
             self.restore()
-            self.episodes = 1
-        for episode in range(self.episodes):
-            self.log_loss(episode)
-            s = self.env.reset()
-            while True:
-                a = self.predict(s)
-                a = self.get_a_indices(a)
-                s_next, r, status, info = self.env.forward(a)
-                a = np.array(a).reshape((1, -1))
-                if self.mode == 'train':
+        else:
+            for episode in range(self.episodes):
+                self.log_loss(episode)
+                s = self.env.reset(self.mode)
+                while True:
+                    a = self.predict(s)
+                    a = self.get_a_indices(a)
+                    s_next, r, status, info = self.env.forward(a)
+                    a = np.array(a).reshape((1, -1))
                     self.save_transition(s, a, r, s_next)
                     self.train()
-                s = s_next
-                if status == self.env.Done:
-                    self.env.trader.log_asset(episode)
-                    break
-            if self.mode == 'train' and self.enable_saver and episode % 10 == 0:
-                self.save(episode)
+                    s = s_next
+                    if status == self.env.Done:
+                        self.env.trader.log_asset(episode)
+                        break
+                if self.enable_saver and episode % 10 == 0:
+                    self.save(episode)
 
-    def evaluate(self):
-        profits_count = len(self.env.trader.history_profits)
+    def eval_and_plot(self):
+        s = self.env.reset('eval')
+        while True:
+            a = self.predict(s)
+            a = self.get_a_indices(a)
+            s_next, r, status, info = self.env.forward(a)
+            s = s_next
+            if status == self.env.Done:
+                self.env.trader.log_asset(0)
+                break
+
         data_ploter.plot_profits_series(
-            [self.env.trader.initial_cash] * profits_count,
-            [self.env.trader.initial_cash + profits for profits in self.env.trader.history_profits],
+            self.env.trader.history_baseline_profits,
+            self.env.trader.history_profits,
             self.save_path
         )
 
@@ -195,12 +203,11 @@ class BaseSLTFModel(BaseTFModel):
     def predict(self, x):
         return self.session.run(self.y, feed_dict={self.x: x})
 
-    def evaluate(self, data_set, *args):
-        x = data_set[0]
-        y = self.predict(x)
-        data_ploter.plot_stock_series(*args, y, data_set[1], self.save_path)
-
     def save(self, step):
         self.saver.save(self.session, self.save_path)
         logging.warning("Step: {} | Saver reach checkpoint.".format(step + 1))
 
+    def eval_and_plot(self):
+        x, label = self.env.get_stock_test_data()
+        y = self.predict(x)
+        data_ploter.plot_stock_series(self.env.codes, y, label, self.save_path)

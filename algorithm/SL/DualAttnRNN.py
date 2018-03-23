@@ -61,7 +61,7 @@ class Algorithm(BaseSLTFModel):
 
     def train(self):
         for step in range(self.train_steps):
-            batch_x, batch_y = self.env.get_batch_data(self.batch_size)
+            batch_x, batch_y = self.env.get_stock_batch_data(self.batch_size)
             _, loss = self.session.run([self.train_op, self.loss], feed_dict={self.x: batch_x, self.label: batch_y})
             if (step + 1) % 1000 == 0:
                 logging.warning("Step: {0} | Loss: {1:.7f}".format(step + 1, loss))
@@ -73,13 +73,14 @@ class Algorithm(BaseSLTFModel):
 def main(args):
     env = Market(args.codes, **{"use_sequence": True})
     algorithm = Algorithm(tf.Session(config=config), env, env.seq_length, env.data_dim, env.code_count, **{
-        "mode": args.mode,
+        # "mode": args.mode,
+        "mode": "test",
         "log_level": args.log_level,
         "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "DualAttnRNN", "model"),
-        # "enable_saver": True,
+        "enable_saver": True,
     })
     algorithm.run()
-    algorithm.evaluate(env.get_test_data(), env.codes)
+    algorithm.eval_and_plot()
 
 
 if __name__ == '__main__':

@@ -23,6 +23,8 @@ class Market(object):
 
         # Initialize dates.
         self.dates = []
+        self.t_dates = []
+        self.e_dates = []
 
         # Initialize stocks data frames.
         self.origin_stock_frames = dict()
@@ -47,13 +49,12 @@ class Market(object):
         # Initialize stock data.
         self._init_stocks_data(start_date, end_date)
 
-        # Initialize trader.
-        self.trader = Trader(self)
-
     def forward(self, action_keys):
         # Check trader.
         self.trader.remove_invalid_positions()
         self.trader.reset_reward()
+        # Init current prices.
+        stocks_price = []
         # Here, action_sheet is like: [-1, 1, ..., -1, 0]
         for index, code in enumerate(self.codes):
             # Get Stock for current date with code.
@@ -63,27 +64,30 @@ class Market(object):
                 stock = self._get_origin_stock_data(code, self.current_date)
                 stock_next = self._get_origin_stock_data(code, self.next_date)
                 action(code, stock, 100, stock_next)
+                stocks_price.append(stock.close)
             except KeyError:
                 logging.info("Current date cannot trade for code: {}.".format(code))
         # Update and return the next state.
-        self.trader.history_profits.append(self.trader.profits)
+        self.trader.history_baseline_profits.append(np.sum(np.multiply(self.stocks_holding_baseline, stocks_price)))
+        self.trader.history_profits.append(self.trader.profits + self.trader.initial_cash)
         try:
             self.current_date, self.next_date = next(self.iter_dates), next(self.iter_dates)
             return self._get_scaled_stock_data_as_state(self.current_date), self.trader.reward, self.Running, 0
         except StopIteration:
             return self._get_scaled_stock_data_as_state(self.current_date), self.trader.reward, self.Done, -1
 
-    def reset(self):
+    def reset(self, mode='train'):
         self.trader.reset()
-        self.iter_dates = iter(self.dates)
+        self.iter_dates = iter(self.t_dates) if mode == 'train' else iter(self.e_dates)
         try:
             self.current_date = next(self.iter_dates)
             self.next_date = next(self.iter_dates)
         except StopIteration:
             raise ValueError("Initialize failed, dates are too short.")
+        self._reset_stocks_holding_baseline()
         return self._get_scaled_stock_data_as_state(self.current_date)
 
-    def get_batch_data(self, batch_size=32):
+    def get_stock_batch_data(self, batch_size=32):
         batch_indices = np.random.choice(self.t_data_indices, batch_size)
         if not self.use_sequence:
             batch_x = self.stocks_x[batch_indices]
@@ -93,7 +97,7 @@ class Market(object):
             batch_y = self.seq_stocks_y[batch_indices]
         return batch_x, batch_y
 
-    def get_test_data(self):
+    def get_stock_test_data(self):
         if not self.use_sequence:
             test_x = self.stocks_x[self.e_data_indices]
             test_y = self.stocks_y[self.e_data_indices]
@@ -103,6 +107,11 @@ class Market(object):
         return test_x, test_y
 
     def _init_parameters(self, **options):
+
+        try:
+            self.init_cash = options['cash']
+        except KeyError:
+            self.init_cash = 100000
 
         try:
             self.use_sequence = options['use_sequence']
@@ -135,6 +144,8 @@ class Market(object):
             self.training_data_ratio = options['training_data_ratio']
         except KeyError:
             self.training_data_ratio = 0.7
+
+        self.trader = Trader(self, cash=self.init_cash)
 
     def _init_stocks_data(self, start_date, end_date):
         self._init_stock_frames_data(start_date, end_date)
@@ -172,7 +183,6 @@ class Market(object):
             self.scaled_stock_frames[code] = scaled_stock_frame
         # Init dates and date iter.
         self.dates = sorted(list(dates_set))
-        self.iter_dates = iter(self.dates)
         # Rebuild index.
         for code in self.codes:
             origin_stock_frame = self.origin_stock_frames[code]
@@ -230,6 +240,8 @@ class Market(object):
         self.data_indices = np.arange(0, self.data_count)
         self.t_data_indices = self.data_indices[:int(self.data_count * self.training_data_ratio)]
         self.e_data_indices = self.data_indices[int(self.data_count * self.training_data_ratio):]
+        self.t_dates = self.dates[:int(len(self.dates) * self.training_data_ratio)]
+        self.e_dates = self.dates[int(len(self.dates) * self.training_data_ratio):]
 
     def _get_origin_stock_data(self, code, date):
         return self.origin_stock_frames[code].loc[date]
@@ -243,6 +255,14 @@ class Market(object):
                 stock = np.insert(stock, 0, self.trader.cash / self.trader.initial_cash, axis=1)
                 stock = np.insert(stock, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
             return stock
+
+    def _reset_stocks_holding_baseline(self):
+        # Calculate cash piece.
+        cash_piece = self.init_cash / self.code_count
+        # Get stocks data.
+        stocks = [self._get_origin_stock_data(code, self.current_date) for code in self.codes]
+        # Init stocks baseline.
+        self.stocks_holding_baseline = [int(math.floor(cash_piece / stock.close)) for stock in stocks]
 
     @property
     def code_count(self):
@@ -286,6 +306,7 @@ class Trader(object):
         self.history_profits = []
         self.cur_action_code = None
         self.cur_action_status = None
+        self.history_baseline_profits = []
         self.action_dic = {ActionCode.Buy: self.buy, ActionCode.Hold: self.hold, ActionCode.Sell: self.sell}
 
     @property
@@ -357,6 +378,7 @@ class Trader(object):
         self.cash = self.initial_cash
         self.positions = []
         self.history_profits = []
+        self.history_baseline_profits = []
 
     def reset_reward(self):
         self.reward = 0
