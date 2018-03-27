@@ -1,5 +1,3 @@
-# coding=utf-8
-
 import tensorflow as tf
 import numpy as np
 import logging
@@ -66,6 +64,10 @@ class BaseTFModel(object):
 
     @abstractmethod
     def train(self):
+        pass
+
+    @abstractmethod
+    def predict(self, a):
         pass
 
     @staticmethod
@@ -159,10 +161,6 @@ class BaseRLTFModel(BaseTFModel):
         logging.warning("Episode: {} | Saver reach checkpoint.".format(episode))
 
     @abstractmethod
-    def predict(self, s):
-        pass
-
-    @abstractmethod
     def save_transition(self, s, a, r, s_next):
         pass
 
@@ -199,9 +197,6 @@ class BaseSLTFModel(BaseTFModel):
             self.train()
         else:
             self.restore()
-
-    def predict(self, x):
-        return self.session.run(self.y, feed_dict={self.x: x})
 
     def save(self, step):
         self.saver.save(self.session, self.save_path)

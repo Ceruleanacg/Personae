@@ -3,43 +3,18 @@
 import torch.nn.functional as func
 import numpy as np
 import torch
-import gym
 
 from torch.autograd import Variable
 from torch import FloatTensor
 
 
-class Algorithm(object):
+from base.nn.pt.model import BaseRLPTModel
 
-    def __init__(self, a_space, s_space, **options):
 
-        # Initialize evn parameters.
-        self.a_space, self.s_space = a_space, s_space
+class Algorithm(BaseRLPTModel):
 
-        try:
-            self.learning_rate = options['learning_rate']
-        except KeyError:
-            self.learning_rate = 0.001
-
-        try:
-            self.gamma = options['gamma']
-        except KeyError:
-            self.gamma = 0.9
-
-        try:
-            self.tau = options['tau']
-        except KeyError:
-            self.tau = 0.01
-
-        try:
-            self.batch_size = options['batch_size']
-        except KeyError:
-            self.batch_size = 32
-
-        try:
-            self.buffer_size = options['buffer_size']
-        except KeyError:
-            self.buffer_size = 2000
+    def __init__(self, env, a_space, s_space, **options):
+        super(Algorithm, self).__init__(env, a_space, s_space, **options)
 
         self.buffer = np.array([])
         self.buffer_length = 0

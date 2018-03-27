@@ -6,7 +6,7 @@ import os
 
 from algorithm import config
 from base.env.finance import Market
-from base.nn.model import BaseSLTFModel
+from base.nn.tf.model import BaseSLTFModel
 from checkpoints import CHECKPOINTS_DIR
 from helper.args_parser import model_launcher_parser
 
@@ -68,6 +68,9 @@ class Algorithm(BaseSLTFModel):
             if step > 0 and (step + 1) % self.save_step == 0:
                 if self.enable_saver:
                     self.save(step)
+
+    def predict(self, x):
+        return self.session.run(self.y, feed_dict={self.x: x})
 
 
 def main(args):

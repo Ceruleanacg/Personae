@@ -401,27 +401,27 @@ class Trader(object):
         if action_code == ActionCode.Buy:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
-                    self.reward += 10
+                    self.reward += 5
                 else:
-                    self.reward -= 10
+                    self.reward -= 7
             else:
-                self.reward -= 50
+                self.reward -= 10
         elif action_code == ActionCode.Sell:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
-                    self.reward -= 10
+                    self.reward -= 7
                 else:
-                    self.reward += 10
+                    self.reward += 5
             else:
-                self.reward -= 50
+                self.reward -= 10
         else:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
-                    self.reward += 10
+                    self.reward += 5
                 else:
-                    self.reward -= 10
+                    self.reward -= 7
             else:
-                self.reward -= 50
+                self.reward -= 10
 
     def _exist_position(self, code):
         return True if len([position.code for position in self.positions if position.code == code]) else False
