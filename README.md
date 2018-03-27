@@ -49,7 +49,7 @@ Before you start testing, following requirements are needed.
 - CUDA (option)
 - Docker (option)
 
-It's best that if you are a Docker user, so that you can use run the  
+It's best that if you are a Docker user, so that you can use run the whole project without installing those dependencies.
  
 And you can also use [Ansible](http://www.ansible.com.cn/) to run [CUDA-Playbook](playbook/cuda-playbook.yml) and [Docker-Playbook](playbook/docker-playbook.yml) to install CUDA and [Nvidia-Docker](https://github.com/NVIDIA/nvidia-docker) if you want to run tests in a Docker Container.
 
