@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
 import logging
+import json
+import os
 
 from abc import abstractmethod
 from helper import data_ploter
@@ -131,6 +133,12 @@ class BaseRLTFModel(BaseTFModel):
             if status == self.env.Done:
                 self.env.trader.log_asset(0)
                 break
+
+        with open(self.save_path + '_history_profits.json', mode='w') as fp:
+            json.dump(self.env.trader.history_profits, fp, indent=True)
+
+        with open(self.save_path + '_baseline_profits.json', mode='w') as fp:
+            json.dump(self.env.trader.history_baseline_profits, fp, indent=True)
 
         data_ploter.plot_profits_series(
             self.env.trader.history_baseline_profits,
