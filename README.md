@@ -9,7 +9,11 @@ This repo tries to implement new methods and papers in different ways (TensorFlo
 Implement of DDPG with TensorFlow.
     > arXiv:1509.02971: [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)
 
-+ [DA-RNN (DualAttnRNN)](algorithm/SL/DualAttnRNN.py)   
++ [Policy Gradient](algorithm/RL/PolicyGradient.py)   
+Implement of Policy Gradient with TensorFlow.
+    > NIPS. Vol. 99. 1999: [Policy gradient methods for reinforcement learning with function approximation](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
+
++ [DA-RNN (DualAttnRNN)](algorithm/SL/DualAttnRNN.py)      
 Implement of arXiv:1704.02971, DA-RNN with TensorFlow.
     > arXiv:1704.02971: [A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction](https://arxiv.org/abs/1704.02971)
 

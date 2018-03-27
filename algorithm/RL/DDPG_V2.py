@@ -3,12 +3,17 @@
 import torch.nn.functional as func
 import numpy as np
 import torch
+import logging
+import os
 
 from torch.autograd import Variable
 from torch import FloatTensor
 
-
+from algorithm import config
+from base.env.finance import Market
 from base.nn.pt.model import BaseRLPTModel
+from checkpoints import CHECKPOINTS_DIR
+from helper.args_parser import model_launcher_parser
 
 
 class Algorithm(BaseRLPTModel):
@@ -16,7 +21,8 @@ class Algorithm(BaseRLPTModel):
     def __init__(self, env, a_space, s_space, **options):
         super(Algorithm, self).__init__(env, a_space, s_space, **options)
 
-        self.buffer = np.array([])
+        # Initialize buffer.
+        self.buffer = np.zeros((self.buffer_size, self.s_space * 2 + self.a_space + 1))
         self.buffer_length = 0
 
         self._init_nn()
@@ -33,19 +39,23 @@ class Algorithm(BaseRLPTModel):
         self.optimizer_c = torch.optim.RMSprop(self.critic_e.parameters(), self.learning_rate * 2)
         self.loss_c = torch.nn.MSELoss()
 
-    def predict_action(self, s):
+    def predict(self, s):
         a_prob = self.actor_e.forward(Variable(FloatTensor(s)))
         return a_prob.data.numpy()
 
-    def save_transition(self, s, a, r, s_n):
-        buff = [[s, [a], [r], s_n]]
-        self.buffer = np.append(self.buffer, buff, axis=0)
+    def save_transition(self, s, a, r, s_next):
+        transition = np.hstack((s, a, [[r]], s_next))
+        self.buffer[self.buffer_length % self.buffer_size, :] = transition
         self.buffer_length += 1
 
     def get_transition_batch(self):
-        batch = self.buffer[np.random.choice(self.buffer_size, size=self.batch_size)]
-        s, a, r, s_n = batch[0], batch[1], np.array(batch[2]), batch[3]
-        return Variable(FloatTensor(s)), Variable(FloatTensor(a)), Variable(FloatTensor(r)), Variable(FloatTensor(s_n))
+        indices = np.random.choice(self.buffer_size, size=self.batch_size)
+        batch = self.buffer[indices, :]
+        s = batch[:, :self.s_space]
+        a = batch[:, self.s_space: self.s_space + self.a_space]
+        r = batch[:, -self.s_space - 1: -self.s_space]
+        s_next = batch[:, -self.s_space:]
+        return Variable(FloatTensor(s)), Variable(FloatTensor(a)), Variable(FloatTensor(r)), Variable(FloatTensor(s_next))
 
     def train(self):
         if self.buffer_length < self.buffer_size:
@@ -106,43 +116,17 @@ class CriticNetwork(torch.nn.Module):
         return q_value
 
 
-def run():
-    env = gym.make('CartPole-v0')
-    env = env.unwrapped
-    a_space = env.action_space.n
-    s_space = env.observation_space.shape[0]
-
-    RL = Algorithm(a_space, s_space)
-
-    for i_episode in range(400):
-        s = env.reset()
-        ep_r = 0
-        while True:
-            if i_episode > 200:
-                env.render()
-
-            a_prob = RL.predict_action(s)
-            a_index = np.argmax(a_prob)
-            s_, r, done, info = env.step(a_index)
-
-            # modify the reward
-            x, x_dot, theta, theta_dot = s_
-            r1 = (env.x_threshold - abs(x)) / env.x_threshold - 0.8
-            r2 = (env.theta_threshold_radians - abs(theta)) / env.theta_threshold_radians - 0.5
-            r = r1 + r2
-
-            a = np.empty(a_space)
-            a[a_index] = 1
-            RL.save_transition(s, a, r, s_)
-
-            ep_r += r
-            RL.train()
-            if done:
-                print('Ep: ', i_episode,
-                      '| Ep_r: ', round(ep_r, 2))
-                break
-            s = s_
+def main(args):
+    env = Market(args.codes)
+    algorithm = Algorithm(env, env.trader.action_space, env.data_dim, **{
+        # "mode": args.mode,
+        # "mode": "test",
+        "episodes": 100,
+        # "log_level": args.log_level,
+    })
+    algorithm.run()
 
 
 if __name__ == '__main__':
-    run()
+    main(model_launcher_parser.parse_args())
+

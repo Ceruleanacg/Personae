@@ -284,9 +284,9 @@ class Market(object):
 
 
 class ActionCode(Enum):
-    Buy = 1
-    Hold = 0
-    Sell = -1
+    Buy = 0
+    Hold = 1
+    Sell = 2
 
 
 class ActionStatus(Enum):
@@ -401,27 +401,27 @@ class Trader(object):
         if action_code == ActionCode.Buy:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
-                    self.reward += 5
+                    self.reward += 50
                 else:
-                    self.reward -= 7
+                    self.reward -= 50
             else:
-                self.reward -= 10
+                self.reward -= 200
         elif action_code == ActionCode.Sell:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
-                    self.reward -= 7
+                    self.reward -= 50
                 else:
-                    self.reward += 5
+                    self.reward += 50
             else:
-                self.reward -= 10
+                self.reward -= 200
         else:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
-                    self.reward += 5
+                    self.reward += 50
                 else:
-                    self.reward -= 7
+                    self.reward -= 50
             else:
-                self.reward -= 10
+                self.reward -= 200
 
     def _exist_position(self, code):
         return True if len([position.code for position in self.positions if position.code == code]) else False

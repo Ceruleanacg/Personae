@@ -70,6 +70,10 @@ class BaseTFModel(object):
     def predict(self, a):
         pass
 
+    @abstractmethod
+    def run(self):
+        pass
+
     @staticmethod
     def add_rnn(layer_count, hidden_size, cell=rnn.BasicLSTMCell, activation=tf.tanh):
         cells = [cell(hidden_size, activation=activation) for _ in range(layer_count)]
@@ -118,32 +122,10 @@ class BaseRLTFModel(BaseTFModel):
         except KeyError:
             self.save_episode = 10
 
-    def run(self):
-        if self.mode != 'train':
-            self.restore()
-        else:
-            for episode in range(self.episodes):
-                self.log_loss(episode)
-                s = self.env.reset(self.mode)
-                while True:
-                    a = self.predict(s)
-                    a = self.get_a_indices(a)
-                    s_next, r, status, info = self.env.forward(a)
-                    a = np.array(a).reshape((1, -1))
-                    self.save_transition(s, a, r, s_next)
-                    self.train()
-                    s = s_next
-                    if status == self.env.Done:
-                        self.env.trader.log_asset(episode)
-                        break
-                if self.enable_saver and episode % 10 == 0:
-                    self.save(episode)
-
     def eval_and_plot(self):
         s = self.env.reset('eval')
         while True:
             a = self.predict(s)
-            a = self.get_a_indices(a)
             s_next, r, status, info = self.env.forward(a)
             s = s_next
             if status == self.env.Done:
@@ -170,7 +152,7 @@ class BaseRLTFModel(BaseTFModel):
 
     @staticmethod
     def get_a_indices(a):
-        a = np.where(a > 1 / 3, 1, np.where(a < - 1 / 3, -1, 0)).astype(np.int32)[0].tolist()
+        a = np.where(a > 2 / 3, 2, np.where(a < 1 / 3, 0, 1)).astype(np.int32)[0].tolist()
         return a
 
 

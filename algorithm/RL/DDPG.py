@@ -61,6 +61,26 @@ class Algorithm(BaseRLTFModel):
         # Initialize variables.
         self.session.run(tf.global_variables_initializer())
 
+    def run(self):
+        if self.mode != 'train':
+            self.restore()
+        else:
+            for episode in range(self.episodes):
+                self.log_loss(episode)
+                s = self.env.reset(self.mode)
+                while True:
+                    a = self.predict(s)
+                    s_next, r, status, info = self.env.forward(a)
+                    a = np.array(a).reshape((1, -1))
+                    self.save_transition(s, a, r, s_next)
+                    self.train()
+                    s = s_next
+                    if status == self.env.Done:
+                        self.env.trader.log_asset(episode)
+                        break
+                if self.enable_saver and episode % 10 == 0:
+                    self.save(episode)
+
     def train(self):
         if self.buffer_length < self.buffer_size:
             return
@@ -71,7 +91,13 @@ class Algorithm(BaseRLTFModel):
 
     def predict(self, s):
         a = self.session.run(self.a_predict, {self.s: s})
+        a = self.get_a_indices(a)
         return a
+
+    def save_transition(self, s, a, r, s_next):
+        transition = np.hstack((s, a, [[r]], s_next))
+        self.buffer[self.buffer_length % self.buffer_size, :] = transition
+        self.buffer_length += 1
 
     def get_transition_batch(self):
         indices = np.random.choice(self.buffer_size, size=self.batch_size)
@@ -81,11 +107,6 @@ class Algorithm(BaseRLTFModel):
         r = batch[:, -self.s_space - 1: -self.s_space]
         s_next = batch[:, -self.s_space:]
         return s, a, r, s_next
-
-    def save_transition(self, s, a, r, s_next):
-        transition = np.hstack((s, a, [[r]], s_next))
-        self.buffer[self.buffer_length % self.buffer_size, :] = transition
-        self.buffer_length += 1
 
     def log_loss(self, episode):
         logging.warning("Episode: {0} | Actor Loss: {1:.2f} | Critic Loss: {2:.2f}".format(episode,
@@ -114,12 +135,11 @@ class Algorithm(BaseRLTFModel):
 
             action_prob = tf.layers.dense(second_dense,
                                           self.a_space,
-                                          tf.nn.tanh,
+                                          tf.nn.sigmoid,
                                           kernel_initializer=w_init,
                                           bias_initializer=b_init,
                                           trainable=trainable)
 
-            # But why?
             return action_prob
 
     @staticmethod
@@ -169,7 +189,7 @@ def main(args):
     algorithm = Algorithm(tf.Session(config=config), env, env.trader.action_space, env.data_dim, **{
         "mode": args.mode,
         # "mode": "test",
-        "episodes": 50,
+        "episodes": 200,
         "log_level": args.log_level,
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "DDPG", "model"),
         "enable_saver": True,
