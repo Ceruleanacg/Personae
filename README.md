@@ -19,23 +19,14 @@ Implement of arXiv:1704.02971, DA-RNN with TensorFlow.
 
 # Experiments
 
-+ [Deep Deterministic Policy Gradient (DDPG)](algorithm/SL/DualAttnRNN.py)   
++ [Deep Deterministic Policy Gradient (DDPG)](algorithm/SL/DualAttnRNN.py)
++ [Policy Gradient](algorithm/RL/PolicyGradient.py)     
 Train a Agent to trade in  stock market, using stocks data set from 2008-01-01 to 2018-01-01 where 70% are training data, 30% are testing data.
 
 <p align='center'>
-  <img src='checkpoints/RL/DDPG/model.png'>
+  <img src='static/images/Profits.jpg'>
    <em>Total Profits and Baseline Profits. (Test Set)</em>
 </p>
-
-+ [Policy Gradient](algorithm/RL/PolicyGradient.py)   
-Train a Agent to trade in  stock market, using stocks data set from 2008-01-01 to 2018-01-01 where 70% are training data, 30% are testing data.
-
-<p align='center'>
-  <img src='checkpoints/RL/PolicyGradient/model.png'>
-   <em>Total Profits and Baseline Profits. (Test Set)</em>
-</p>
-
-
 
 + [DA-RNN (DualAttnRNN)](algorithm/SL/DualAttnRNN.py)   
 Train a Predictor to predict stock prices, using stocks data set from 2008-01-01 to 2018-01-01, where 70% are training data, 30% are testing data.
