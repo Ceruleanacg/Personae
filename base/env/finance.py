@@ -72,9 +72,11 @@ class Market(object):
         self.trader.history_profits.append(self.trader.profits + self.trader.initial_cash)
         try:
             self.current_date, self.next_date = next(self.iter_dates), next(self.iter_dates)
-            return self._get_scaled_stock_data_as_state(self.current_date), self.trader.reward, self.Running, 0
+            return self._get_scaled_stock_data_as_state(self.current_date), self.trader.reward, self.Running, self.\
+                trader.cur_action_status
         except StopIteration:
-            return self._get_scaled_stock_data_as_state(self.current_date), self.trader.reward, self.Done, -1
+            return self._get_scaled_stock_data_as_state(self.current_date), self.trader.reward, self.Done, self.trader.\
+                cur_action_status
 
     def reset(self, mode='train'):
         self.trader.reset()
@@ -422,6 +424,8 @@ class Trader(object):
                     self.reward -= 50
             else:
                 self.reward -= 200
+        self.cur_action_status = action_status
+        self.cur_action_code = action_code
 
     def _exist_position(self, code):
         return True if len([position.code for position in self.positions if position.code == code]) else False

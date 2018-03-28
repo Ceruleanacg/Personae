@@ -117,8 +117,8 @@ class Algorithm(BaseRLTFModel):
 def main(args):
     env = Market(args.codes)
     algorithm = Algorithm(tf.Session(config=config), env, env.trader.action_space, env.data_dim, **{
-        # "mode": args.mode,
-        "mode": "test",
+        "mode": args.mode,
+        # "mode": "test",
         "episodes": 200,
         "log_level": args.log_level,
         # "log_level": logging.INFO,
@@ -131,5 +131,3 @@ def main(args):
 
 if __name__ == '__main__':
     main(model_launcher_parser.parse_args())
-
-
