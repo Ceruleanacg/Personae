@@ -3,6 +3,7 @@
 import argparse
 
 codes = ["600036", "601328", "601998", "601398"]
+# codes = ["600036", "601328"]
 
 spider_parser = argparse.ArgumentParser()
 spider_parser.add_argument("-c", "--codes", default=codes, nargs="+")

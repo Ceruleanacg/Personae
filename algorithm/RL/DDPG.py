@@ -70,7 +70,7 @@ class Algorithm(BaseRLTFModel):
                 s = self.env.reset(self.mode)
                 while True:
                     a = self.predict(s)
-                    s_next, r, status, info = self.env.forward(a)
+                    s_next, r, status, info = self.env.forward_v1(a)
                     a = np.array(a).reshape((1, -1))
                     self.save_transition(s, a, r, s_next)
                     self.train()
@@ -135,7 +135,7 @@ class Algorithm(BaseRLTFModel):
 
             action_prob = tf.layers.dense(second_dense,
                                           self.a_space,
-                                          tf.nn.sigmoid,
+                                          tf.nn.tanh,
                                           kernel_initializer=w_init,
                                           bias_initializer=b_init,
                                           trainable=trainable)
@@ -187,15 +187,16 @@ class Algorithm(BaseRLTFModel):
 def main(args):
     env = Market(args.codes)
     algorithm = Algorithm(tf.Session(config=config), env, env.trader.action_space, env.data_dim, **{
-        # "mode": args.mode,
-        "mode": "test",
+        "mode": args.mode,
+        # "mode": "test",
         "episodes": 200,
         "log_level": args.log_level,
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "DDPG", "model"),
         "enable_saver": True,
     })
     algorithm.run()
-    algorithm.eval_and_plot()
+    algorithm.eval_v1()
+    algorithm.plot()
 
 
 if __name__ == '__main__':

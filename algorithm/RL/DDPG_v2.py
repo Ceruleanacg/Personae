@@ -55,21 +55,43 @@ class Algorithm(BaseRLPTModel):
         a = batch[:, self.s_space: self.s_space + self.a_space]
         r = batch[:, -self.s_space - 1: -self.s_space]
         s_next = batch[:, -self.s_space:]
-        return Variable(FloatTensor(s)), Variable(FloatTensor(a)), Variable(FloatTensor(r)), Variable(FloatTensor(s_next))
+        return s, a, r, s_next
+
+    def run(self):
+        for episode in range(self.episodes):
+            self.log_loss(episode)
+            s = self.env.reset()
+            while True:
+                a = self.predict(s)
+                a = self.get_a_indices(a)
+                s_next, r, status, info = self.env.forward_v1(a)
+                a = np.array(a).reshape((1, -1))
+                self.save_transition(s, a, r, s_next)
+                self.train()
+                s = s_next
+                if status == self.env.Done:
+                    self.env.trader.log_asset(episode)
+                    break
 
     def train(self):
         if self.buffer_length < self.buffer_size:
             return
+        # Soft update target actor and target critic.
         self.soft_update_nn()
+        # Get sample batch.
         s, a, r, s_n = self.get_transition_batch()
-        q_e = self.critic_e(s, a)
-        q_t = r + self.gamma * self.critic_t(s_n, a)
-        self._train_a(q_e)
+        # Calculate Q-eval.
+        q_e = self.critic_e(Variable(FloatTensor(s)), Variable(FloatTensor(a)))
+        # Calculate Q-target.
+        a_t = self.actor_t(Variable(FloatTensor(s_n), volatile=True))
+        q_t = self.critic_t(Variable(FloatTensor(s_n), volatile=True), a_t)
+        q_t = Variable(FloatTensor(r), volatile=True) + self.gamma * q_t
         self._train_c(q_e, q_t)
+        self._train_a(s)
 
-    def _train_a(self, q_eval):
-        loss_a = -torch.mean(q_eval)
+    def _train_a(self, s):
         self.optimizer_a.zero_grad()
+        loss_a = -self.critic_e(Variable(FloatTensor(s)), self.actor_e(Variable(FloatTensor(s)))).mean()
         loss_a.backward()
         self.optimizer_a.step()
 
@@ -97,7 +119,7 @@ class ActorNetwork(torch.nn.Module):
 
     def forward(self, s):
         phi_s = func.relu(self.first_dense(s))
-        prb_a = func.tanh(self.second_dense(phi_s))
+        prb_a = func.sigmoid(self.second_dense(phi_s))
         return prb_a
 
 
@@ -121,7 +143,7 @@ def main(args):
     algorithm = Algorithm(env, env.trader.action_space, env.data_dim, **{
         # "mode": args.mode,
         # "mode": "test",
-        "episodes": 100,
+        "episodes": 10,
         # "log_level": args.log_level,
     })
     algorithm.run()

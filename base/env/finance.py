@@ -49,7 +49,7 @@ class Market(object):
         # Initialize stock data.
         self._init_stocks_data(start_date, end_date)
 
-    def forward(self, action_keys):
+    def forward_v1(self, action_keys):
         # Check trader.
         self.trader.remove_invalid_positions()
         self.trader.reset_reward()
@@ -72,11 +72,24 @@ class Market(object):
         self.trader.history_profits.append(self.trader.profits + self.trader.initial_cash)
         try:
             self.current_date, self.next_date = next(self.iter_dates), next(self.iter_dates)
-            return self._get_scaled_stock_data_as_state(self.current_date), self.trader.reward, self.Running, self.\
-                trader.cur_action_status
+            state_next = self._get_scaled_stock_data_as_state(self.current_date)
+            return state_next, self.trader.reward, self.Running, self.trader.cur_action_status
         except StopIteration:
-            return self._get_scaled_stock_data_as_state(self.current_date), self.trader.reward, self.Done, self.trader.\
-                cur_action_status
+            state_next = self._get_scaled_stock_data_as_state(self.current_date)
+            return state_next, self.trader.reward, self.Done, self.trader.cur_action_status
+
+    def forward_v2(self, stock_code, action_code):
+        # Check Trader.
+        self.trader.remove_invalid_positions()
+        self.trader.reset_reward()
+        # Get stock data.
+        stock = self._get_origin_stock_data(stock_code, self.current_date)
+        stock_next = self._get_origin_stock_data(stock_code, self.next_date)
+        # Execute transaction.
+        action = self.trader.action_dic[ActionCode(action_code)]
+        action(stock_code, stock, 100, stock_next)
+        # Add action times and update current_date if need.
+        return self._get_next_info()
 
     def reset(self, mode='train'):
         self.trader.reset()
@@ -258,6 +271,30 @@ class Market(object):
                 stock = np.insert(stock, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
             return stock
 
+    def _get_next_info(self):
+        # Init episode status.
+        episode_done = self.Running
+        # Add action times.
+        self.trader.action_times += 1
+        # Update date if need.
+        if self.trader.action_times == self.code_count:
+            self.trader.action_times = 0
+            try:
+                self.current_date, self.next_date = next(self.iter_dates), next(self.iter_dates)
+            except StopIteration:
+                episode_done = self.Done
+            finally:
+                self._update_current_profits_and_baseline()
+        # Get next state.
+        state_next = self._get_scaled_stock_data_as_state(self.current_date)
+        # Return s_n, r, d, info.
+        return state_next, self.trader.reward, episode_done, self.trader.cur_action_status
+
+    def _update_current_profits_and_baseline(self):
+        prices = [self._get_origin_stock_data(code, self.current_date).close for code in self.codes]
+        self.trader.history_baseline_profits.append(np.sum(np.multiply(self.stocks_holding_baseline, prices)))
+        self.trader.history_profits.append(self.trader.profits + self.trader.initial_cash)
+
     def _reset_stocks_holding_baseline(self):
         # Calculate cash piece.
         cash_piece = self.init_cash / self.code_count
@@ -304,6 +341,7 @@ class Trader(object):
         self.market = market
         self.reward = 0
         self.positions = []
+        self.action_times = 0
         self.initial_cash = cash
         self.history_profits = []
         self.cur_action_code = None
@@ -317,7 +355,7 @@ class Trader(object):
 
     @property
     def action_space(self):
-        return self.codes_count
+        return self.codes_count * 3
 
     @property
     def profits(self):
@@ -407,7 +445,7 @@ class Trader(object):
                 else:
                     self.reward -= 50
             else:
-                self.reward -= 200
+                self.reward -= 100
         elif action_code == ActionCode.Sell:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
@@ -415,7 +453,7 @@ class Trader(object):
                 else:
                     self.reward += 50
             else:
-                self.reward -= 200
+                self.reward -= 100
         else:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
@@ -423,7 +461,7 @@ class Trader(object):
                 else:
                     self.reward -= 50
             else:
-                self.reward -= 200
+                self.reward -= 100
         self.cur_action_status = action_status
         self.cur_action_code = action_code
 

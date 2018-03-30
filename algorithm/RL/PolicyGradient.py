@@ -30,10 +30,10 @@ class Algorithm(BaseRLTFModel):
         self._init_saver()
 
     def _init_input(self):
-        self.a = tf.placeholder(tf.float32, [None, self.a_space])
-        self.s = tf.placeholder(tf.float32, [None, self.s_space], 'state')
-        self.r = tf.placeholder(tf.float32, [None, ], 'reward')
-        self.s_next = tf.placeholder(tf.float32, [None, self.s_space], 'state_next')
+        self.a = tf.placeholder(tf.int32, [None, ])
+        self.r = tf.placeholder(tf.float32, [None, ])
+        self.s = tf.placeholder(tf.float32, [None, self.s_space])
+        self.s_next = tf.placeholder(tf.float32, [None, self.s_space])
 
     def _init_nn(self):
         # Initialize predict actor and critic.
@@ -55,15 +55,18 @@ class Algorithm(BaseRLTFModel):
 
             action_prob = tf.layers.dense(second_dense,
                                           self.a_space,
-                                          tf.nn.sigmoid,
+                                          tf.nn.tanh,
                                           kernel_initializer=w_init,
                                           bias_initializer=b_init)
 
             self.a_prob = action_prob
+            self.a_s_prob = tf.nn.softmax(action_prob)
 
     def _init_op(self):
         with tf.variable_scope('loss'):
-            negative_cross_entropy = -tf.reduce_sum(tf.log(self.a_prob) * self.a)
+            # a_one_hot = tf.one_hot(self.a, self.a_space)
+            # negative_cross_entropy = -tf.reduce_sum(tf.log(self.a_prob) * a_one_hot)
+            negative_cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.a_prob, labels=self.a)
             self.loss_fn = tf.reduce_mean(negative_cross_entropy * self.r)
         with tf.variable_scope('train'):
             self.train_op = tf.train.RMSPropOptimizer(self.learning_rate * 2).minimize(self.loss_fn)
@@ -77,10 +80,9 @@ class Algorithm(BaseRLTFModel):
                 self.log_loss(episode)
                 s = self.env.reset(self.mode)
                 while True:
-                    a = self.predict(s)
-                    s_next, r, status, info = self.env.forward(a)
-                    a = np.array(a).reshape((1, -1))
-                    self.save_transition(s, a, r, s_next)
+                    c, a, a_index = self.predict(s)
+                    s_next, r, status, info = self.env.forward_v2(c, a)
+                    self.save_transition(s, a_index, r, s_next)
                     s = s_next
                     if status == self.env.Done:
                         self.train()
@@ -101,13 +103,12 @@ class Algorithm(BaseRLTFModel):
         self.r_buffer = []
 
     def predict(self, s):
-        a = self.session.run(self.a_prob, {self.s: s})
-        a = self.get_a_indices(a)
-        return a
+        a = self.session.run(self.a_s_prob, {self.s: s})
+        return self.get_stock_code_and_action(a)
 
     def save_transition(self, s, a, r, s_next):
         self.s_buffer.append(s.reshape((-1, )))
-        self.a_buffer.append(a.reshape((-1, )))
+        self.a_buffer.append(a)
         self.r_buffer.append(r)
 
     def log_loss(self, episode):
@@ -121,12 +122,12 @@ def main(args):
         # "mode": "test",
         "episodes": 200,
         "log_level": args.log_level,
-        # "log_level": logging.INFO,
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "PolicyGradient", "model"),
         "enable_saver": True,
     })
     algorithm.run()
-    algorithm.eval_and_plot()
+    algorithm.eval_v2()
+    algorithm.plot()
 
 
 if __name__ == '__main__':

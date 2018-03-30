@@ -70,7 +70,7 @@ class BaseTFModel(object):
 
     @abstractmethod
     def predict(self, a):
-        pass
+        return None, None, None
 
     @abstractmethod
     def run(self):
@@ -124,16 +124,27 @@ class BaseRLTFModel(BaseTFModel):
         except KeyError:
             self.save_episode = 10
 
-    def eval_and_plot(self):
+    def eval_v1(self):
         s = self.env.reset('eval')
         while True:
             a = self.predict(s)
-            s_next, r, status, info = self.env.forward(a)
+            s_next, r, status, info = self.env.forward_v1(a)
             s = s_next
             if status == self.env.Done:
                 self.env.trader.log_asset(0)
                 break
 
+    def eval_v2(self):
+        s = self.env.reset('eval')
+        while True:
+            c, a, _ = self.predict(s)
+            s_next, r, status, info = self.env.forward_v2(c, a)
+            s = s_next
+            if status == self.env.Done:
+                self.env.trader.log_asset(0)
+                break
+
+    def plot(self):
         with open(self.save_path + '_history_profits.json', mode='w') as fp:
             json.dump(self.env.trader.history_profits, fp, indent=True)
 
@@ -160,8 +171,27 @@ class BaseRLTFModel(BaseTFModel):
 
     @staticmethod
     def get_a_indices(a):
-        a = np.where(a > 2 / 3, 2, np.where(a < 1 / 3, 0, 1)).astype(np.int32)[0].tolist()
+        a = np.where(a > 1 / 3, 2, np.where(a < - 1 / 3, 1, 0)).astype(np.int32)[0].tolist()
         return a
+
+    def get_stock_code_and_action(self, a, use_prob=False):
+        # Reshape a.
+        a = a.reshape((-1, ))
+        # Calculate action index depends on prob.
+        if use_prob:
+            # Generate indices.
+            a_indices = np.arange(a.shape[0])
+            # Get action index.
+            action_index = np.random.choice(a_indices, p=a)
+        else:
+            action_index = np.argmax(a)
+        # Get action.
+        action = action_index % 3
+        # Calculate stock index.
+        stock_index = np.floor(action_index / self.env.trader.action_space).astype(np.int)
+        # Get stock code.
+        stock_code = self.env.codes[stock_index]
+        return stock_code, action, action_index
 
 
 class BaseSLTFModel(BaseTFModel):
