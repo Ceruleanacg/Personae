@@ -1,6 +1,6 @@
 # Personae - RL & SL Methods and Envs For Trading
 
-Personae is a repo of implements and enviorment of Deep Reinforcement Learning & Supervised Learning.  
+Personae is a repo of implements and environment of Deep Reinforcement Learning & Supervised Learning.  
 This repo tries to implement new methods and papers in different ways (TensorFlow or PyTorch) and test them in Financial Market (Stock Market).
 
 # Contents
@@ -16,6 +16,15 @@ Implement of Policy Gradient with TensorFlow.
 + [DA-RNN (DualAttnRNN)](algorithm/SL/DualAttnRNN.py)      
 Implement of arXiv:1704.02971, DA-RNN with TensorFlow.
     > arXiv:1704.02971: [A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction](https://arxiv.org/abs/1704.02971)
+
+# Environment
+
+A basic test environment of Financial Market is implemented.
+
+- [Stock Market](base/env/finance.py)   
+Implement of Stock Market, Trader, Positions as a gym env (gym is not required), which can give a env for regression or sequence data generating for RL or SL model.
+
+Also, more function is updating.
 
 # Experiments
 
