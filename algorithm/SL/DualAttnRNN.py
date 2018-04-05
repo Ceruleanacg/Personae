@@ -36,10 +36,10 @@ class Algorithm(BaseSLTFModel):
         with tf.variable_scope("1st_encoder"):
             self.f_encoder_rnn = self.add_rnn(1, self.hidden_size)
             self.f_encoder_outputs, _ = tf.nn.dynamic_rnn(self.f_encoder_rnn, self.x, dtype=tf.float32)
-            self.f_attn_inputs = tf.nn.softmax(self.f_encoder_outputs)
-            self.f_attn_outputs = self.add_fc(self.f_attn_inputs, self.hidden_size, tf.tanh)
+            self.f_attn_inputs = self.add_fc(self.f_encoder_outputs, self.hidden_size, tf.tanh)
+            self.f_attn_outputs = tf.nn.softmax(self.f_attn_inputs)
         with tf.variable_scope("1st_decoder"):
-            self.f_decoder_input = tf.matmul(self.f_encoder_outputs, self.f_attn_outputs, transpose_a=True)
+            self.f_decoder_input = tf.multiply(self.f_encoder_outputs, self.f_attn_outputs)
             self.f_decoder_rnn = self.add_rnn(1, self.hidden_size)
             self.f_decoder_outputs, _ = tf.nn.dynamic_rnn(self.f_decoder_rnn, self.f_decoder_input, dtype=tf.float32)
         # Second Attn
@@ -76,8 +76,8 @@ class Algorithm(BaseSLTFModel):
 def main(args):
     env = Market(args.codes, **{"use_sequence": True})
     algorithm = Algorithm(tf.Session(config=config), env, env.seq_length, env.data_dim, env.code_count, **{
-        # "mode": args.mode,
-        "mode": "test",
+        "mode": args.mode,
+        # "mode": "test",
         "log_level": args.log_level,
         "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "DualAttnRNN", "model"),
         "enable_saver": True,
