@@ -44,10 +44,10 @@ class Algorithm(BaseSLTFModel):
             self.f_decoder_outputs, _ = tf.nn.dynamic_rnn(self.f_decoder_rnn, self.f_decoder_input, dtype=tf.float32)
         # Second Attn
         with tf.variable_scope("2nd_encoder"):
-            self.s_attn_input = tf.nn.softmax(self.f_decoder_outputs)
-            self.s_attn_outputs = self.add_fc(self.s_attn_input, self.hidden_size, tf.tanh)
+            self.s_attn_input = self.add_fc(self.f_decoder_outputs, self.hidden_size, tf.tanh)
+            self.s_attn_outputs = tf.nn.softmax(self.s_attn_input)
         with tf.variable_scope("2nd_decoder"):
-            self.s_decoder_input = tf.matmul(self.f_decoder_outputs, self.s_attn_outputs, transpose_a=True)
+            self.s_decoder_input = tf.multiply(self.f_decoder_outputs, self.s_attn_outputs)
             self.s_decoder_rnn = self.add_rnn(2, self.hidden_size)
             self.f_decoder_outputs, _ = tf.nn.dynamic_rnn(self.s_decoder_rnn, self.s_decoder_input, dtype=tf.float32)
             self.y = self.add_fc(self.f_decoder_outputs[:, -1], self.y_space)
