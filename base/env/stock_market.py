@@ -412,7 +412,7 @@ class Trader(object):
             return self._update_reward(ActionCode.Hold, ActionStatus.Failed, None)
         position = self._get_position(code)
         position.update_status(stock.close, stock_next.close)
-        self._update_reward(ActionCode.Hold, ActionStatus.Failed, position)
+        self._update_reward(ActionCode.Hold, ActionStatus.Success, position)
 
     def reset(self):
         self.cash = self.initial_cash
