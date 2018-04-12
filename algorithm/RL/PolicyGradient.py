@@ -7,7 +7,7 @@ import logging
 import os
 
 from algorithm import config
-from base.env.finance import Market
+from base.env.stock_market import Market
 from base.nn.tf.model import BaseRLTFModel
 from checkpoints import CHECKPOINTS_DIR
 from helper.args_parser import model_launcher_parser

@@ -21,7 +21,7 @@ Implement of arXiv:1704.02971, DA-RNN with TensorFlow.
 
 A basic test environment of Financial Market is implemented.
 
-- [Stock Market](base/env/finance.py)   
+- [Stock Market](base/env/stock_market.py)   
 Implement of Stock Market, Trader, Positions as a gym env (gym is not required), which can give a env for regression or sequence data generating for RL or SL model.
 
 Also, more function is updating.
