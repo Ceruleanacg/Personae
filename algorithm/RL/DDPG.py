@@ -71,7 +71,7 @@ class Algorithm(BaseRLTFModel):
                 while True:
                     c, a, a_index = self.predict(s)
                     s_next, r, status, info = self.env.forward_v2(c, a)
-                    self.save_transition(s, a, r, s_next)
+                    self.save_transition(s, a_index, r, s_next)
                     self.train()
                     s = s_next
                     if status == self.env.Done:
