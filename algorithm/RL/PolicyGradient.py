@@ -104,7 +104,7 @@ class Algorithm(BaseRLTFModel):
 
     def predict(self, s):
         a = self.session.run(self.a_s_prob, {self.s: s})
-        return self.get_stock_code_and_action(a)
+        return self.get_stock_code_and_action(a, use_prob=True)
 
     def save_transition(self, s, a, r, s_next):
         self.s_buffer.append(s.reshape((-1, )))
@@ -120,7 +120,7 @@ def main(args):
     algorithm = Algorithm(tf.Session(config=config), env, env.trader.action_space, env.data_dim, **{
         "mode": args.mode,
         # "mode": "test",
-        "episodes": 200,
+        "episodes": 1000,
         "log_level": args.log_level,
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "PolicyGradient", "model"),
         "enable_saver": True,

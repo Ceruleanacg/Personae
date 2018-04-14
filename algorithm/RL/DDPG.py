@@ -70,7 +70,7 @@ class Algorithm(BaseRLTFModel):
                 s = self.env.reset(self.mode)
                 while True:
                     c, a, a_index = self.predict(s)
-                    a = np.clip(np.random.normal(a, 1.0), 0, 2).astype(np.int)
+                    a = np.clip(np.random.normal(a, 0.5), 0, 2).astype(np.int)
                     s_next, r, status, info = self.env.forward_v2(c, a)
                     self.save_transition(s, a, r, s_next)
                     self.train()
@@ -90,8 +90,8 @@ class Algorithm(BaseRLTFModel):
         self.actor_loss, _ = self.session.run([self.a_loss, self.a_train_op], {self.s: s})
 
     def predict(self, s):
-        a = self.session.run(self.a_predict, {self.s: s})
-        return self.get_stock_code_and_action(a)
+        a = self.session.run(self.a_predict, {self.s: s})[0]
+        return self.get_stock_code_and_action(a, continuous=True)
 
     def save_transition(self, s, a, r, s_next):
         transition = np.hstack((s, [[a]], [[r]], s_next))
@@ -132,7 +132,7 @@ class Algorithm(BaseRLTFModel):
                                      bias_initializer=b_init,
                                      trainable=trainable)
 
-            return tf.multiply(action, self.a_space)
+            return tf.multiply(action, self.a_space - 1)
 
     @staticmethod
     def __build_critic(state, action, scope, trainable=True):
