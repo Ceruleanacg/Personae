@@ -21,7 +21,7 @@ class Algorithm(BaseRLTFModel):
         self.actor_loss, self.critic_loss = .0, .0
 
         # Initialize buffer.
-        self.buffer = np.zeros((self.buffer_size, self.s_space * 2 + self.a_space + 1))
+        self.buffer = np.zeros((self.buffer_size, self.s_space * 2 + 1 + 1))
         self.buffer_length = 0
 
         self._init_input()
@@ -69,9 +69,9 @@ class Algorithm(BaseRLTFModel):
                 self.log_loss(episode)
                 s = self.env.reset(self.mode)
                 while True:
-                    a = self.predict(s)
-                    s_next, r, status, info = self.env.forward_v1(a)
-                    a = np.array(a).reshape((1, -1))
+                    c, a, a_index = self.predict(s)
+                    a = np.clip(np.random.normal(a, 1.0), 0, 2).astype(np.int)
+                    s_next, r, status, info = self.env.forward_v2(c, a)
                     self.save_transition(s, a, r, s_next)
                     self.train()
                     s = s_next
@@ -91,11 +91,10 @@ class Algorithm(BaseRLTFModel):
 
     def predict(self, s):
         a = self.session.run(self.a_predict, {self.s: s})
-        a = self.get_a_indices(a)
-        return a
+        return self.get_stock_code_and_action(a)
 
     def save_transition(self, s, a, r, s_next):
-        transition = np.hstack((s, a, [[r]], s_next))
+        transition = np.hstack((s, [[a]], [[r]], s_next))
         self.buffer[self.buffer_length % self.buffer_size, :] = transition
         self.buffer_length += 1
 
@@ -103,7 +102,7 @@ class Algorithm(BaseRLTFModel):
         indices = np.random.choice(self.buffer_size, size=self.batch_size)
         batch = self.buffer[indices, :]
         s = batch[:, :self.s_space]
-        a = batch[:, self.s_space: self.s_space + self.a_space]
+        a = batch[:, self.s_space: self.s_space + 1]
         r = batch[:, -self.s_space - 1: -self.s_space]
         s_next = batch[:, -self.s_space:]
         return s, a, r, s_next
@@ -120,27 +119,20 @@ class Algorithm(BaseRLTFModel):
         with tf.variable_scope(scope):
             # state is ? * code_count * data_dim.
             first_dense = tf.layers.dense(state,
-                                          32,
+                                          64,
                                           tf.nn.relu,
                                           kernel_initializer=w_init,
                                           bias_initializer=b_init,
                                           trainable=trainable)
 
-            second_dense = tf.layers.dense(first_dense,
-                                           32,
-                                           tf.nn.relu,
-                                           kernel_initializer=w_init,
-                                           bias_initializer=b_init,
-                                           trainable=trainable)
+            action = tf.layers.dense(first_dense,
+                                     1,
+                                     tf.nn.sigmoid,
+                                     kernel_initializer=w_init,
+                                     bias_initializer=b_init,
+                                     trainable=trainable)
 
-            action_prob = tf.layers.dense(second_dense,
-                                          self.a_space,
-                                          tf.nn.tanh,
-                                          kernel_initializer=w_init,
-                                          bias_initializer=b_init,
-                                          trainable=trainable)
-
-            return action_prob
+            return tf.multiply(action, self.a_space)
 
     @staticmethod
     def __build_critic(state, action, scope, trainable=True):
@@ -150,32 +142,19 @@ class Algorithm(BaseRLTFModel):
         with tf.variable_scope(scope):
 
             s_first_dense = tf.layers.dense(state,
-                                            32,
+                                            64,
                                             tf.nn.relu,
                                             kernel_initializer=w_init,
                                             bias_initializer=b_init,
                                             trainable=trainable)
 
-            s_second_dense = tf.layers.dense(s_first_dense,
-                                             32,
-                                             tf.nn.relu,
-                                             kernel_initializer=w_init,
-                                             bias_initializer=b_init,
-                                             trainable=trainable)
-
             a_first_dense = tf.layers.dense(action,
-                                            32,
+                                            64,
                                             kernel_initializer=w_init,
                                             bias_initializer=b_init,
                                             trainable=trainable)
 
-            a_second_dense = tf.layers.dense(a_first_dense,
-                                             32,
-                                             kernel_initializer=w_init,
-                                             bias_initializer=b_init,
-                                             trainable=trainable)
-
-            q_value = tf.layers.dense(tf.nn.relu(s_second_dense + a_second_dense),
+            q_value = tf.layers.dense(tf.nn.relu(s_first_dense + a_first_dense),
                                       1,
                                       kernel_initializer=w_init,
                                       bias_initializer=b_init,
@@ -195,7 +174,7 @@ def main(args):
         "enable_saver": True,
     })
     algorithm.run()
-    algorithm.eval_v1()
+    algorithm.eval_v2()
     algorithm.plot()
 
 

@@ -441,7 +441,7 @@ class Trader(object):
         if action_code == ActionCode.Buy:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
-                    self.reward += 50
+                    self.reward += 70
                 else:
                     self.reward -= 50
             else:
@@ -449,7 +449,7 @@ class Trader(object):
         elif action_code == ActionCode.Sell:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
-                    self.reward -= 50
+                    self.reward -= 70
                 else:
                     self.reward += 50
             else:
@@ -457,7 +457,7 @@ class Trader(object):
         else:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
-                    self.reward += 50
+                    self.reward += 70
                 else:
                     self.reward -= 50
             else:
