@@ -70,7 +70,6 @@ class Algorithm(BaseRLTFModel):
                 s = self.env.reset(self.mode)
                 while True:
                     c, a, a_index = self.predict(s)
-                    a = np.clip(np.random.normal(a, 0.5), 0, 2).astype(np.int)
                     s_next, r, status, info = self.env.forward_v2(c, a)
                     self.save_transition(s, a, r, s_next)
                     self.train()
