@@ -106,3 +106,4 @@ class BaseRLPTModel(BasePTModel):
     def get_a_indices(a):
         a = np.where(a > 1 / 3, 2, np.where(a < - 1 / 3, 1, 0)).astype(np.int32)[0].tolist()
         return a
+

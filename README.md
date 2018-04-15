@@ -104,4 +104,5 @@ You can create an env yourself, and install Python3.5 and all dependencies requi
 
 # TODO
 - More Implementations of Papers.
-- More High-Frequency Stocks Data.
+- More High-Frequency Stocks Data
+- Future Supported.
