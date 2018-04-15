@@ -3,13 +3,13 @@
 import tensorflow as tf
 import numpy as np
 
-import logging
 import os
 
 from algorithm import config
+from checkpoints import CHECKPOINTS_DIR
 from base.env.stock_market import Market
 from base.nn.tf.model import BaseRLTFModel
-from checkpoints import CHECKPOINTS_DIR
+from helper.data_logger import algorithm_logger
 from helper.args_parser import model_launcher_parser
 
 
@@ -107,9 +107,9 @@ class Algorithm(BaseRLTFModel):
         return s, a, r, s_next
 
     def log_loss(self, episode):
-        logging.warning("Episode: {0} | Actor Loss: {1:.2f} | Critic Loss: {2:.2f}".format(episode,
-                                                                                           self.actor_loss,
-                                                                                           self.critic_loss))
+        algorithm_logger.warning("Episode: {0} | Actor Loss: {1:.2f} | Critic Loss: {2:.2f}".format(episode,
+                                                                                                    self.actor_loss,
+                                                                                                    self.critic_loss))
 
     def __build_actor_nn(self, state, scope, trainable=True):
 
@@ -168,7 +168,6 @@ def main(args):
         "mode": args.mode,
         # "mode": "test",
         "episodes": 200,
-        "log_level": args.log_level,
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "DDPG", "model"),
         "enable_saver": True,
     })

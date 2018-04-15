@@ -1,7 +1,6 @@
 # coding=utf-8
 
 import numpy as np
-import logging
 
 from abc import abstractmethod
 
@@ -31,11 +30,6 @@ class BasePTModel(object):
             self.mode = options['mode']
         except KeyError:
             self.mode = 'train'
-
-        try:
-            logging.basicConfig(level=options['log_level'])
-        except KeyError:
-            logging.basicConfig(level=logging.WARNING)
 
     @abstractmethod
     def train(self):

@@ -3,16 +3,12 @@
 import torch.nn.functional as func
 import numpy as np
 import torch
-import logging
-import os
 
 from torch.autograd import Variable
 from torch import FloatTensor
 
-from algorithm import config
 from base.env.stock_market import Market
 from base.nn.pt.model import BaseRLPTModel
-from checkpoints import CHECKPOINTS_DIR
 from helper.args_parser import model_launcher_parser
 
 
@@ -144,7 +140,6 @@ def main(args):
         # "mode": args.mode,
         # "mode": "test",
         "episodes": 10,
-        # "log_level": args.log_level,
     })
     algorithm.run()
 

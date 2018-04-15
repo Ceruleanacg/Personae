@@ -3,11 +3,11 @@
 import pandas as pd
 import numpy as np
 
-import logging
 import math
 
 from base.model.document import Stock
 from sklearn import preprocessing
+from helper.data_logger import stock_market_logger
 from enum import Enum
 
 
@@ -66,7 +66,7 @@ class Market(object):
                 action(code, stock, 100, stock_next)
                 stocks_price.append(stock.close)
             except KeyError:
-                logging.info("Current date cannot trade for code: {}.".format(code))
+                stock_market_logger.info("Current date cannot trade for code: {}.".format(code))
         # Update and return the next state.
         self.trader.history_baseline_profits.append(np.sum(np.multiply(self.stocks_holding_baseline, stocks_price)))
         self.trader.history_profits.append(self.trader.profits + self.trader.initial_cash)
@@ -386,7 +386,7 @@ class Trader(object):
             self.cash -= amount * stock.close
             self._update_reward(ActionCode.Buy, ActionStatus.Success, position)
         else:
-            logging.info("Code: {}, not enough cash, cannot buy.".format(code))
+            stock_market_logger.info("Code: {}, not enough cash, cannot buy.".format(code))
             if self._exist_position(code):
                 # If position exists, update status.
                 position = self._get_position(code)
@@ -396,7 +396,7 @@ class Trader(object):
     def sell(self, code, stock, amount, stock_next):
         # Check if position exists.
         if not self._exist_position(code):
-            logging.info("Code: {}, not exists in Positions, sell failed.".format(code))
+            stock_market_logger.info("Code: {}, not exists in Positions, sell failed.".format(code))
             return self._update_reward(ActionCode.Sell, ActionStatus.Failed, None)
         # Sell position if possible.
         position = self._get_position(code)
@@ -408,7 +408,7 @@ class Trader(object):
 
     def hold(self, code, stock, _, stock_next):
         if not self._exist_position(code):
-            logging.info("Code: {}, not exists in Positions, hold failed.")
+            stock_market_logger.info("Code: {}, not exists in Positions, hold failed.")
             return self._update_reward(ActionCode.Hold, ActionStatus.Failed, None)
         position = self._get_position(code)
         position.update_status(stock.close, stock_next.close)
@@ -427,7 +427,7 @@ class Trader(object):
         self.positions = [position for position in self.positions if position.amount > 0]
 
     def log_asset(self, episode):
-        logging.warning(
+        stock_market_logger.warning(
             "Episode: {0} | "
             "Cash: {1:.2f} | "
             "Holdings: {2:.2f} | "
@@ -435,7 +435,7 @@ class Trader(object):
         )
 
     def log_reward(self):
-        logging.info("Reward: {}".format(self.reward))
+        stock_market_logger.info("Reward: {}".format(self.reward))
 
     def _update_reward(self, action_code, action_status, position):
         if action_code == ActionCode.Buy:
@@ -507,7 +507,7 @@ def main():
     market = Market(codes)
     market.reset()
 
-    logging.basicConfig(level=logging.INFO)
+    stock_market_logger.basicConfig(level=stock_market_logger.INFO)
 
     while True:
 

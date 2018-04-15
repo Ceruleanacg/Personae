@@ -1,12 +1,11 @@
 import tensorflow as tf
 import numpy as np
-import logging
 import json
-import os
 
 from abc import abstractmethod
 from helper import data_ploter
 from tensorflow.contrib import rnn
+from helper.data_logger import algorithm_logger
 
 
 class BaseTFModel(object):
@@ -39,11 +38,6 @@ class BaseTFModel(object):
             self.mode = options['mode']
         except KeyError:
             self.mode = 'train'
-
-        try:
-            logging.basicConfig(level=options['log_level'])
-        except KeyError:
-            logging.basicConfig(level=logging.WARNING)
 
     def restore(self):
         self.saver.restore(self.session, self.save_path)
@@ -159,7 +153,7 @@ class BaseRLTFModel(BaseTFModel):
 
     def save(self, episode):
         self.saver.save(self.session, self.save_path)
-        logging.warning("Episode: {} | Saver reach checkpoint.".format(episode))
+        algorithm_logger.warning("Episode: {} | Saver reach checkpoint.".format(episode))
 
     @abstractmethod
     def save_transition(self, s, a, r, s_next):
@@ -226,7 +220,7 @@ class BaseSLTFModel(BaseTFModel):
 
     def save(self, step):
         self.saver.save(self.session, self.save_path)
-        logging.warning("Step: {} | Saver reach checkpoint.".format(step + 1))
+        algorithm_logger.warning("Step: {} | Saver reach checkpoint.".format(step + 1))
 
     def eval_and_plot(self):
         x, label = self.env.get_stock_test_data()
