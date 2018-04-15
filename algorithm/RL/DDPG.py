@@ -167,7 +167,7 @@ def main(args):
     algorithm = Algorithm(tf.Session(config=config), env, env.trader.action_space, env.data_dim, **{
         "mode": args.mode,
         # "mode": "test",
-        "episodes": 200,
+        "episodes": args.episode,
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "DDPG", "model"),
         "enable_saver": True,
     })

@@ -10,3 +10,6 @@
 [2018-04-15 18:10:14,937] Episode: 8 | Actor Loss: -27.92
 [2018-04-15 18:10:22,932] Episode: 9 | Actor Loss: -16.28
 [2018-04-15 18:10:30,638] Episode: 10 | Actor Loss: -23.40
+[2018-04-15 18:10:39,260] Episode: 10 | Saver reach checkpoint.
+[2018-04-15 18:10:39,260] Episode: 11 | Actor Loss: -18.98
+[2018-04-15 18:10:47,169] Episode: 12 | Actor Loss: -16.79
