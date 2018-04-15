@@ -385,6 +385,12 @@ class Trader(object):
             # Update cash and holding price.
             self.cash -= amount * stock.close
             self._update_reward(ActionCode.Buy, ActionStatus.Success, position)
+            stock_market_logger.info("Code: {0},"
+                                     " buy success,"
+                                     " cash: {1:.2f},"
+                                     " holding value:{2:.2f}".format(code,
+                                                                     self.cash,
+                                                                     self.holdings_value))
         else:
             stock_market_logger.info("Code: {}, not enough cash, cannot buy.".format(code))
             if self._exist_position(code):
@@ -405,14 +411,26 @@ class Trader(object):
         # Update cash and holding price.
         self.cash += amount * stock.close
         self._update_reward(ActionCode.Sell, ActionStatus.Success, position)
+        stock_market_logger.info("Code: {0},"
+                                 " sell success,"
+                                 " cash: {1:.2f},"
+                                 " holding value:{2:.2f}".format(code,
+                                                                 self.cash,
+                                                                 self.holdings_value))
 
     def hold(self, code, stock, _, stock_next):
         if not self._exist_position(code):
-            stock_market_logger.info("Code: {}, not exists in Positions, hold failed.")
+            stock_market_logger.info("Code: {}, not exists in Positions, hold failed.".format(code))
             return self._update_reward(ActionCode.Hold, ActionStatus.Failed, None)
         position = self._get_position(code)
         position.update_status(stock.close, stock_next.close)
         self._update_reward(ActionCode.Hold, ActionStatus.Success, position)
+        stock_market_logger.info("Code: {0},"
+                                 " hold success,"
+                                 " cash: {1:.2f},"
+                                 " holding value:{2:.2f}".format(code,
+                                                                 self.cash,
+                                                                 self.holdings_value))
 
     def reset(self):
         self.cash = self.initial_cash
@@ -513,7 +531,7 @@ def main():
 
         actions_indices = [np.random.choice([-1, 0, 1]) for _ in codes]
 
-        s_next, r, status, info = market.forward(actions_indices)
+        s_next, r, status, info = market.forward_v1(actions_indices)
 
         market.trader.log_asset("1")
         market.trader.log_reward()
