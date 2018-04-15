@@ -62,7 +62,7 @@ Before you start testing, following requirements are needed.
 - CUDA (option)
 - Docker (option)
 
-It's best that if you are a Docker user, so that you can use run the whole project without installing those dependencies.
+It's best that if you are a Docker user, so that you can run the whole project without installing those dependencies.
  
 And you can also use [Ansible](http://www.ansible.com.cn/) to run [CUDA-Playbook](playbook/cuda-playbook.yml) and [Docker-Playbook](playbook/docker-playbook.yml) to install CUDA and [Nvidia-Docker](https://github.com/NVIDIA/nvidia-docker) if you want to run tests in a Docker Container.
 
@@ -71,9 +71,9 @@ And you can also use [Ansible](http://www.ansible.com.cn/) to run [CUDA-Playbook
 ### If you use Docker
 
 #### About base image
-My image for this repo is [ceruleanwang/haru](https://hub.docker.com/r/ceruleanwang/haru/), and haru is inherited from [ceruleanwang/quant](https://hub.docker.com/r/ceruleanwang/quant-base/).   
-The image ceruleanwang/quant is inherited from [nvidia/cuda:8.0-cudnn6-runtime](https://hub.docker.com/r/nvidia/cuda/).   
-So please make sure your CUDA version and cuDNN version are correct. 
+My image for this repo is [ceruleanwang/haru](https://hub.docker.com/r/ceruleanwang/haru/), and haru is inherited from [ceruleanwang/quant](https://hub.docker.com/r/ceruleanwang/quant-base/).    
+   
+The image [ceruleanwang/quant](https://hub.docker.com/r/ceruleanwang/quant-base/) is inherited from [nvidia/cuda:8.0-cudnn6-runtime](https://hub.docker.com/r/nvidia/cuda/). So please make sure your CUDA version and cuDNN version are correct. 
 
 #### Instructions
 First you should make sure you have stocks data in your mongodb.
