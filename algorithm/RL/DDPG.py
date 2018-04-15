@@ -24,6 +24,9 @@ class Algorithm(BaseRLTFModel):
         self.buffer = np.zeros((self.buffer_size, self.s_space * 2 + 1 + 1))
         self.buffer_length = 0
 
+        # Explore scale
+        self.scale = 3.0
+
         self._init_input()
         self._init_nn()
         self._init_op()
@@ -73,6 +76,7 @@ class Algorithm(BaseRLTFModel):
                     s_next, r, status, info = self.env.forward_v2(c, a)
                     self.save_transition(s, a_index, r, s_next)
                     self.train()
+                    self.scale *= 0.995
                     s = s_next
                     if status == self.env.Done:
                         self.env.trader.log_asset(episode)
@@ -90,7 +94,10 @@ class Algorithm(BaseRLTFModel):
 
     def predict(self, s):
         a = self.session.run(self.a_predict, {self.s: s})[0]
-        return self.get_stock_code_and_action(a, continuous=True)
+        if self.mode == 'train':
+            return self.get_stock_code_and_action(a, continuous=True, use_prob=True, scale=self.scale)
+        else:
+            return self.get_stock_code_and_action(a, continuous=True, use_prob=False)
 
     def save_transition(self, s, a, r, s_next):
         transition = np.hstack((s, [[a]], [[r]], s_next))

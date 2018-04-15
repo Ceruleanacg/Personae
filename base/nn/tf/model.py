@@ -168,10 +168,10 @@ class BaseRLTFModel(BaseTFModel):
         a = np.where(a > 1 / 3, 2, np.where(a < - 1 / 3, 1, 0)).astype(np.int32)[0].tolist()
         return a
 
-    def get_stock_code_and_action(self, a, continuous=False, use_prob=False):
+    def get_stock_code_and_action(self, a, continuous=False, use_prob=False, scale=0.0):
         # Reshape a.
-        a = a.reshape((-1,))
         if not continuous:
+            a = a.reshape((-1,))
             # Calculate action index depends on prob.
             if use_prob:
                 # Generate indices.
@@ -179,10 +179,16 @@ class BaseRLTFModel(BaseTFModel):
                 # Get action index.
                 action_index = np.random.choice(a_indices, p=a)
             else:
+                # Get action index.
                 action_index = np.argmax(a)
         else:
-            # Calculate action index
-            action_index = np.floor(a[0]).astype(int)
+            a = a[0]
+            if use_prob:
+                # Calculate action index
+                action_index = np.clip(np.random.normal(a, scale), 0, self.a_space).astype(int)
+            else:
+                # Calculate action index
+                action_index = np.floor(a).astype(int)
 
         # Get action
         action = action_index % 3
