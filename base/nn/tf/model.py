@@ -185,7 +185,7 @@ class BaseRLTFModel(BaseTFModel):
             a = a[0]
             if use_prob:
                 # Calculate action index
-                action_index = np.clip(np.random.normal(a, scale), 0, self.a_space).astype(int)
+                action_index = np.clip(np.random.normal(a, scale), 0, self.a_space - 1).astype(int)
             else:
                 # Calculate action index
                 action_index = np.floor(a).astype(int)
