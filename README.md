@@ -33,8 +33,9 @@ Also, more function is updating.
 # Experiments
 
 + [Deep Deterministic Policy Gradient (DDPG)](algorithm/SL/DualAttnRNN.py)
++ [Double DQN](algorithm/RL/DoubleDQN.py)    
 + [Policy Gradient (PG)](algorithm/RL/PolicyGradient.py)     
-Train a Agent to trade in  stock market, using stocks data set from 2008-01-01 to 2018-01-01 where 70% are training data, 30% are testing data.
+Train a Agent to trade in stock market, using stocks data set from 2008-01-01 to 2018-01-01 where 70% are training data, 30% are testing data.
 
 <p align='center'>
   <img src='static/images/Profits.jpg'>
