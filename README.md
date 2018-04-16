@@ -9,6 +9,10 @@ This repo tries to implement new methods and papers in different ways (TensorFlo
 Implement of DDPG with TensorFlow.
     > arXiv:1509.02971: [Continuous control with deep reinforcement learning](https://arxiv.org/abs/1509.02971)
 
++ [Double DQN](algorithm/RL/DoubleDQN.py)    
+Implement of Double-DQN with TensorFlow.   
+    > arXiv:1509.06461: [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461)
+
 + [Policy Gradient](algorithm/RL/PolicyGradient.py)   
 Implement of Policy Gradient with TensorFlow.
     > NIPS. Vol. 99. 1999: [Policy gradient methods for reinforcement learning with function approximation](https://papers.nips.cc/paper/1713-policy-gradient-methods-for-reinforcement-learning-with-function-approximation.pdf)
