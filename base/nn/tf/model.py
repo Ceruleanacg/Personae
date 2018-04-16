@@ -13,6 +13,7 @@ class BaseTFModel(object):
     def __init__(self, session, env, **options):
         self.session = session
         self.env = env
+        self.total_step = 0
 
         try:
             self.learning_rate = options['learning_rate']
@@ -109,6 +110,11 @@ class BaseRLTFModel(BaseTFModel):
             self.tau = 0.01
 
         try:
+            self.epsilon = options['epsilon']
+        except KeyError:
+            self.epsilon = 0.9
+
+        try:
             self.buffer_size = options['buffer_size']
         except KeyError:
             self.buffer_size = 10000
@@ -168,9 +174,9 @@ class BaseRLTFModel(BaseTFModel):
         a = np.where(a > 1 / 3, 2, np.where(a < - 1 / 3, 1, 0)).astype(np.int32)[0].tolist()
         return a
 
-    def get_stock_code_and_action(self, a, continuous=False, use_prob=False, scale=0.0):
+    def get_stock_code_and_action(self, a, use_greedy=False, use_prob=False):
         # Reshape a.
-        if not continuous:
+        if not use_greedy:
             a = a.reshape((-1,))
             # Calculate action index depends on prob.
             if use_prob:
@@ -182,10 +188,12 @@ class BaseRLTFModel(BaseTFModel):
                 # Get action index.
                 action_index = np.argmax(a)
         else:
-            a = a[0]
             if use_prob:
                 # Calculate action index
-                action_index = np.clip(np.random.normal(a, scale), 0, self.a_space - 1).astype(int)
+                if np.random.uniform() < self.epsilon:
+                    action_index = np.floor(a).astype(int)
+                else:
+                    action_index = np.random.randint(0, self.a_space)
             else:
                 # Calculate action index
                 action_index = np.floor(a).astype(int)

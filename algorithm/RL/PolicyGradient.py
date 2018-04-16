@@ -104,10 +104,7 @@ class Algorithm(BaseRLTFModel):
 
     def predict(self, s):
         a = self.session.run(self.a_s_prob, {self.s: s})
-        if self.mode == 'train':
-            return self.get_stock_code_and_action(a, use_prob=True)
-        else:
-            return self.get_stock_code_and_action(a, use_prob=False)
+        return self.get_stock_code_and_action(a, use_greedy=False, use_prob=True if self.mode == 'train' else False)
 
     def save_transition(self, s, a, r, s_next):
         self.s_buffer.append(s.reshape((-1, )))
