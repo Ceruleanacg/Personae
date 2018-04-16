@@ -1,2 +1,2 @@
-model_checkpoint_path: "/Users/shuyu/Desktop/Affair/Machine Learning/mayu/checkpoints/RL/DoubleDQN/model"
-all_model_checkpoint_paths: "/Users/shuyu/Desktop/Affair/Machine Learning/mayu/checkpoints/RL/DoubleDQN/model"
+model_checkpoint_path: "/app/mayu/checkpoints/RL/DoubleDQN/model"
+all_model_checkpoint_paths: "/app/mayu/checkpoints/RL/DoubleDQN/model"
