@@ -237,6 +237,18 @@ class BaseSLTFModel(BaseTFModel):
         algorithm_logger.warning("Step: {} | Saver reach checkpoint.".format(step + 1))
 
     def eval_and_plot(self):
+
         x, label = self.env.get_stock_test_data()
+
         y = self.predict(x)
-        data_ploter.plot_stock_series(self.env.codes, y, label, self.save_path)
+
+        with open(self.save_path + '_y.json', mode='w') as fp:
+            json.dump(y.tolist(), fp, indent=True)
+
+        with open(self.save_path + '_label.json', mode='w') as fp:
+            json.dump(label.tolist(), fp, indent=True)
+
+        data_ploter.plot_stock_series(self.env.codes,
+                                      y,
+                                      label,
+                                      self.save_path)

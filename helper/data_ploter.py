@@ -6,7 +6,7 @@ import math
 
 def plot_stock_series(codes, y, label, save_path, y_desc='Predict', label_desc='Real'):
     row, col = int(math.ceil(len(codes) / 2)), int(math.ceil(len(codes) / 2))
-    plt.figure(figsize=(40, 25))
+    plt.figure(figsize=(20, 15))
     for index, code in enumerate(codes):
         plt.subplot(row * 100 + col * 10 + (index + 1))
         plt.title(code)

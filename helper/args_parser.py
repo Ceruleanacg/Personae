@@ -12,9 +12,9 @@ spider_parser.add_argument("-e", "--end", default="2018-01-01")
 
 
 model_launcher_parser = argparse.ArgumentParser()
-model_launcher_parser.add_argument("-n", "--name", default="DDPG")
+model_launcher_parser.add_argument("-n", "--name", default="DoubleDQN")
 model_launcher_parser.add_argument("-c", "--codes", default=codes, nargs="+")
 model_launcher_parser.add_argument("-s", "--start", default="2008-01-01")
 model_launcher_parser.add_argument("-e", "--end", default="2018-01-01")
 model_launcher_parser.add_argument("--mode", default="train")
-model_launcher_parser.add_argument("--episode", default=1000, type=int)
+model_launcher_parser.add_argument("--episode", default=600, type=int)

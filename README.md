@@ -43,10 +43,11 @@ Train a Agent to trade in stock market, using stocks data set from 2008-01-01 to
 </p>
 
 + [DA-RNN (DualAttnRNN)](algorithm/SL/DualAttnRNN.py)   
++ [Naive-LSTM (LSTM)](algorithm/SL/NaiveLSTM.py)
 Train a Predictor to predict stock prices, using stocks data set from 2008-01-01 to 2018-01-01, where 70% are training data, 30% are testing data.
 
 <p align='center'>
-  <img src='checkpoints/SL/DualAttnRNN/model.png'>
+  <img src='static/images/Prices.jpg'>
    <em>Prices Prediction Experiments on 4 Bank Stocks. (Test Set)</em>
 </p>
 

@@ -32,26 +32,11 @@ class Algorithm(BaseSLTFModel):
         self.label = tf.placeholder(tf.float32, [None, self.y_space])
 
     def _init_nn(self):
-        # First Attn
-        with tf.variable_scope("1st_encoder"):
-            self.f_encoder_rnn = self.add_rnn(1, self.hidden_size)
-            self.f_encoder_outputs, _ = tf.nn.dynamic_rnn(self.f_encoder_rnn, self.x, dtype=tf.float32)
-            self.f_attn_inputs = self.add_fc(self.f_encoder_outputs, self.hidden_size, tf.tanh)
-            self.f_attn_outputs = tf.nn.softmax(self.f_attn_inputs)
-        with tf.variable_scope("1st_decoder"):
-            self.f_decoder_input = tf.multiply(self.f_encoder_outputs, self.f_attn_outputs)
-            self.f_decoder_rnn = self.add_rnn(1, self.hidden_size)
-            self.f_decoder_outputs, _ = tf.nn.dynamic_rnn(self.f_decoder_rnn, self.f_decoder_input, dtype=tf.float32)
-        # Second Attn
-        with tf.variable_scope("2nd_encoder"):
-            self.s_attn_input = self.add_fc(self.f_decoder_outputs, self.hidden_size, tf.tanh)
-            self.s_attn_outputs = tf.nn.softmax(self.s_attn_input)
-        with tf.variable_scope("2nd_decoder"):
-            self.s_decoder_input = tf.multiply(self.f_decoder_outputs, self.s_attn_outputs)
-            self.s_decoder_rnn = self.add_rnn(2, self.hidden_size)
-            self.f_decoder_outputs, _ = tf.nn.dynamic_rnn(self.s_decoder_rnn, self.s_decoder_input, dtype=tf.float32)
-            self.f_decoder_outputs_dense = self.add_fc(self.f_decoder_outputs[:, -1], 16)
-            self.y = self.add_fc(self.f_decoder_outputs_dense, self.y_space)
+        self.rnn = self.add_rnn(1, self.hidden_size)
+        self.rnn_output, _ = tf.nn.dynamic_rnn(self.rnn, self.x, dtype=tf.float32)
+        self.rnn_output = self.rnn_output[:, -1]
+        self.rnn_output_dense = self.add_fc(self.rnn_output, 16)
+        self.y = self.add_fc(self.rnn_output_dense, self.y_space)
 
     def _init_op(self):
         self.loss = tf.losses.mean_squared_error(self.y, self.label)
@@ -79,7 +64,7 @@ def main(args):
     algorithm = Algorithm(tf.Session(config=config), env, env.seq_length, env.data_dim, env.code_count, **{
         "mode": args.mode,
         # "mode": "test",
-        "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "DualAttnRNN", "model"),
+        "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "NaiveLSTM", "model"),
         "enable_saver": True,
     })
     algorithm.run()
