@@ -79,7 +79,7 @@ class BaseTFModel(object):
     @staticmethod
     def add_cnn(x_input, filters, kernel_size, pooling_size):
         convoluted_tensor = tf.layers.conv2d(x_input, filters, kernel_size, padding='SAME', activation=tf.nn.relu)
-        return tf.layers.max_pooling2d(convoluted_tensor, pooling_size, strides=[1, 1])
+        return tf.layers.max_pooling2d(convoluted_tensor, pooling_size, strides=[1, 1], padding='SAME')
 
     @staticmethod
     def add_fc(x, units, activation=None):

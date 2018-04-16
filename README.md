@@ -21,6 +21,10 @@ Implement of Policy Gradient with TensorFlow.
 Implement of arXiv:1704.02971, DA-RNN with TensorFlow.
     > arXiv:1704.02971: [A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction](https://arxiv.org/abs/1704.02971)
 
++ [TreNet (HNN)](algorithm/SL/TreNet.py)     
+Implement of TreNet with TensorFlow.    
+    > IJCAI 2017. [Hybrid Neural Networks for Learning the Trend in Time Series](https://www.ijcai.org/proceedings/2017/0316.pdf)
+
 + [Naive-LSTM (LSTM)](algorithm/SL/NaiveLSTM.py)    
 Implement of simple LSTM based model with TensorFlow.    
     > arXiv:1506.02078: [Visualizing and Understanding Recurrent Networks](https://arxiv.org/abs/1506.02078)     
@@ -47,7 +51,8 @@ Train a Agent to trade in stock market, using stocks data set from 2008-01-01 to
 </p>
 
 + [DA-RNN (DualAttnRNN)](algorithm/SL/DualAttnRNN.py)   
-+ [Naive-LSTM (LSTM)](algorithm/SL/NaiveLSTM.py)    
++ [Naive-LSTM (LSTM)](algorithm/SL/NaiveLSTM.py)      
++ [TreNet (HNN)](algorithm/SL/TreNet.py)     
 Train a Predictor to predict stock prices, using stocks data set from 2008-01-01 to 2018-01-01, where 70% are training data, 30% are testing data.
 
 <p align='center'>
