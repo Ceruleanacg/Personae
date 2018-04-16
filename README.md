@@ -21,6 +21,10 @@ Implement of Policy Gradient with TensorFlow.
 Implement of arXiv:1704.02971, DA-RNN with TensorFlow.
     > arXiv:1704.02971: [A Dual-Stage Attention-Based Recurrent Neural Network for Time Series Prediction](https://arxiv.org/abs/1704.02971)
 
++ [Naive-LSTM (LSTM)](algorithm/SL/NaiveLSTM.py)    
+Implement of simple LSTM based model with TensorFlow.    
+    > arXiv:1506.02078: [Visualizing and Understanding Recurrent Networks](https://arxiv.org/abs/1506.02078)     
+
 # Environment
 
 A basic test environment of Financial Market is implemented.
