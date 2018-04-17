@@ -12,6 +12,10 @@ Implement of DDPG with TensorFlow.
 + [Double DQN](algorithm/RL/DoubleDQN.py)    
 Implement of Double-DQN with TensorFlow.   
     > arXiv:1509.06461: [Deep Reinforcement Learning with Double Q-learning](https://arxiv.org/abs/1509.06461)
+    
++ [Dueling-DQN](algorithm/RL/DuelingDQN.py)     
+Implement of Dueling-DQN with TensorFlow.    
+    > arXiv:1511.06581: [Dueling Network Architectures for Deep Reinforcement Learning](https://arxiv.org/abs/1511.06581)     
 
 + [Policy Gradient](algorithm/RL/PolicyGradient.py)   
 Implement of Policy Gradient with TensorFlow.
@@ -41,7 +45,8 @@ Also, more function is updating.
 # Experiments
 
 + [Deep Deterministic Policy Gradient (DDPG)](algorithm/SL/DualAttnRNN.py)
-+ [Double DQN](algorithm/RL/DoubleDQN.py)    
++ [Double-DQN](algorithm/RL/DoubleDQN.py)    
++ [Dueling-DQN](algorithm/RL/DuelingDQN.py)
 + [Policy Gradient (PG)](algorithm/RL/PolicyGradient.py)     
 Train a Agent to trade in stock market, using stocks data set from 2008-01-01 to 2018-01-01 where 70% are training data, 30% are testing data.
 
