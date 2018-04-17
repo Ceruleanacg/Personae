@@ -146,8 +146,8 @@ class Algorithm(BaseRLTFModel):
 def main(args):
     env = Market(args.codes)
     algorithm = Algorithm(tf.Session(config=config), env, env.trader.action_space, env.data_dim, **{
-        # "mode": args.mode,
-        "mode": "test",
+        "mode": args.mode,
+        # "mode": "test",
         "episodes": args.episode,
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "DoubleDQN", "model"),
         "summary_path": os.path.join(CHECKPOINTS_DIR, "RL", "DoubleDQN", "summary"),
