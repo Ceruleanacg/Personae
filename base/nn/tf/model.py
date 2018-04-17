@@ -41,6 +41,11 @@ class BaseTFModel(object):
             self.save_path = None
 
         try:
+            self.summary_path = options["summary_path"]
+        except KeyError:
+            self.summary_path = None
+
+        try:
             self.mode = options['mode']
         except KeyError:
             self.mode = 'train'
@@ -55,7 +60,7 @@ class BaseTFModel(object):
     def _init_summary_writer(self):
         if self.enable_summary_writer:
             self.merged_summary_op = tf.summary.merge_all()
-            self.summary_writer = tf.summary.FileWriter(self.save_path, self.session.graph)
+            self.summary_writer = tf.summary.FileWriter(self.summary_path, self.session.graph)
 
     @abstractmethod
     def _init_input(self, *args):

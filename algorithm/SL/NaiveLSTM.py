@@ -66,6 +66,7 @@ def main(args):
         "mode": args.mode,
         # "mode": "test",
         "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "NaiveLSTM", "model"),
+        "summary_path": os.path.join(CHECKPOINTS_DIR, "SL", "NaiveLSTM", "summary"),
         "enable_saver": True,
         "enable_summary_writer": True
     })

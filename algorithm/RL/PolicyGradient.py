@@ -123,6 +123,7 @@ def main(args):
         # "mode": "test",
         "episodes": args.episode,
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "PolicyGradient", "model"),
+        "summary_path": os.path.join(CHECKPOINTS_DIR, "RL", "PolicyGradient", "summary"),
         "enable_saver": True,
         "enable_summary_writer": True
     })

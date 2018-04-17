@@ -75,6 +75,7 @@ def main(args):
         "mode": args.mode,
         # "mode": "test",
         "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "TreNet", "model"),
+        "summary_path": os.path.join(CHECKPOINTS_DIR, "SL", "TreNet", "summary"),
         "hidden_size": 5,
         "enable_saver": True,
         "enable_summary_writer": True
