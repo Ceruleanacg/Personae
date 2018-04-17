@@ -31,6 +31,11 @@ class BaseTFModel(object):
             self.enable_saver = False
 
         try:
+            self.enable_summary_writer = options['enable_summary_writer']
+        except KeyError:
+            self.enable_summary_writer = False
+
+        try:
             self.save_path = options["save_path"]
         except KeyError:
             self.save_path = None
@@ -46,6 +51,11 @@ class BaseTFModel(object):
     def _init_saver(self):
         if self.enable_saver:
             self.saver = tf.train.Saver()
+
+    def _init_summary_writer(self):
+        if self.enable_summary_writer:
+            self.merged_summary_op = tf.summary.merge_all()
+            self.summary_writer = tf.summary.FileWriter(self.save_path, self.session.graph)
 
     @abstractmethod
     def _init_input(self, *args):

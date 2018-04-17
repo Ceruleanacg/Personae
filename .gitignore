@@ -4,3 +4,4 @@ script/sync_code.py
 script/model_launcher.py
 script/spider_launcher.py
 playground/.ipynb_checkpoints
+checkpoints/*/*/model/*

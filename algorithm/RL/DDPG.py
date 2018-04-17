@@ -28,6 +28,7 @@ class Algorithm(BaseRLTFModel):
         self._init_nn()
         self._init_op()
         self._init_saver()
+        self._init_summary_writer()
 
     def _init_input(self):
         self.s = tf.placeholder(tf.float32, [None, self.s_space], 'state')
@@ -170,6 +171,7 @@ def main(args):
         "episodes": args.episode,
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "DDPG", "model"),
         "enable_saver": True,
+        "enable_summary_writer": True
     })
     algorithm.run()
     algorithm.eval_v2()

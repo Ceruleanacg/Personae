@@ -1,7 +1,6 @@
 # coding=utf-8
 
 import tensorflow as tf
-import numpy as np
 import logging
 import os
 
@@ -27,6 +26,7 @@ class Algorithm(BaseSLTFModel):
         self._init_nn()
         self._init_op()
         self._init_saver()
+        self._init_summary_writer()
 
     def _init_input(self):
         self.rnn_x = tf.placeholder(tf.float32, [None, self.seq_length, self.x_space])
@@ -77,6 +77,7 @@ def main(args):
         "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "TreNet", "model"),
         "hidden_size": 5,
         "enable_saver": True,
+        "enable_summary_writer": True
     })
     algorithm.run()
     algorithm.eval_and_plot()
