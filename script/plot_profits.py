@@ -15,6 +15,9 @@ with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'DDPG', 'model_history_profits.jso
 with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'DoubleDQN', 'model_history_profits.json')) as fp:
     profits_DoubleDQN = json.load(fp)
 
+with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'DuelingDQN', 'model_history_profits.json')) as fp:
+    profits_DuelingDQN = json.load(fp)
+
 with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'PolicyGradient', 'model_history_profits.json')) as fp:
     profits_PG = json.load(fp)
 
@@ -25,6 +28,7 @@ plt.title("Profits - Baseline")
 plt.plot(profits_baseline, label='Baseline')
 plt.plot(profits_DDPG, label='DDPG')
 plt.plot(profits_DoubleDQN, label='Double-DQN')
+plt.plot(profits_DuelingDQN, label='Dueling-DQN')
 plt.plot(profits_PG, label='PG')
 plt.legend(loc='upper left')
 plt.show(dpi=200)
