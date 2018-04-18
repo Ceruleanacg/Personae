@@ -4,7 +4,7 @@ import tushare as ts
 import logging
 
 from base.model.document import Stock
-from helper.args_parser import spider_parser
+from helper.args_parser import stock_spider_parser
 
 
 class StockSpider(object):
@@ -24,6 +24,6 @@ class StockSpider(object):
 
 
 if __name__ == '__main__':
-    args = spider_parser.parse_args()
+    args = stock_spider_parser.parse_args()
     for _code in args.codes:
         StockSpider(_code, args.start, args.end).crawl()
