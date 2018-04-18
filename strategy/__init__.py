@@ -9,7 +9,7 @@ config = {
     }
   },
   "extra": {
-    "log_level": "verbose",
+    "log_level": "warning",
   },
   "mod": {
     "sys_analyser": {
