@@ -6,7 +6,7 @@ import os
 
 from algorithm import config
 from base.env.stock_market import Market
-from base.nn.tf.model import BaseSLTFModel
+from base.algorithm.model import BaseSLTFModel
 from checkpoints import CHECKPOINTS_DIR
 from helper.args_parser import model_launcher_parser
 
