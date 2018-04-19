@@ -91,6 +91,7 @@ class Market(object):
         except KeyError:
             self.training_data_ratio = 0.7
 
+        self.doc_class = Stock if self.m_type == 'stock' else Future
         self.trader = Trader(self, cash=self.init_cash)
 
     def _init_data(self, start_date, end_date):
@@ -101,7 +102,7 @@ class Market(object):
     def _remove_invalid_codes(self):
         if not len(self.codes):
             raise ValueError("Fatal error, odes cannot be empty.")
-        valid_codes = [code for code in self.codes if Stock.exist_in_db(code)]
+        valid_codes = [code for code in self.codes if self.doc_class.exist_in_db(code)]
         if not len(valid_codes):
             raise ValueError("Fatal error, no valid codes in database.")
         self.codes = valid_codes
@@ -111,12 +112,10 @@ class Market(object):
         self._remove_invalid_codes()
         # Init columns and data set.
         columns, dates_set = ['open', 'high', 'low', 'close', 'volume'], set()
-        # Init document class.
-        doc_class = Stock if self.m_type == 'stock' else Future
         # Load data.
         for code in self.codes:
             # Load instrument docs by code.
-            instrument_docs = doc_class.get_k_data(code, start_date, end_date)
+            instrument_docs = self.doc_class.get_k_data(code, start_date, end_date)
             # Init instrument dicts.
             instrument_dicts = [instrument.to_dic() for instrument in instrument_docs]
             # Split dates.
