@@ -5,9 +5,9 @@ import logging
 import os
 
 from algorithm import config
-from base.env.stock_market import Market
-from base.algorithm.model import BaseSLTFModel
+from base.env.market import Market
 from checkpoints import CHECKPOINTS_DIR
+from base.algorithm.model import BaseSLTFModel
 from helper.args_parser import model_launcher_parser
 
 
@@ -49,7 +49,7 @@ class Algorithm(BaseSLTFModel):
             self.s_attn_outputs = tf.nn.softmax(self.s_attn_input)
         with tf.variable_scope("2nd_decoder"):
             self.s_decoder_input = tf.multiply(self.f_decoder_outputs, self.s_attn_outputs)
-            self.s_decoder_rnn = self.add_rnn(2, self.hidden_size)
+            self.s_decoder_rnn = self.add_rnn(1, self.hidden_size)
             self.f_decoder_outputs, _ = tf.nn.dynamic_rnn(self.s_decoder_rnn, self.s_decoder_input, dtype=tf.float32)
             self.f_decoder_outputs_dense = self.add_fc(self.f_decoder_outputs[:, -1], 16)
             self.y = self.add_fc(self.f_decoder_outputs_dense, self.y_space)
@@ -63,7 +63,7 @@ class Algorithm(BaseSLTFModel):
 
     def train(self):
         for step in range(self.train_steps):
-            batch_x, batch_y = self.env.get_stock_batch_data(self.batch_size)
+            batch_x, batch_y = self.env.get_batch_data(self.batch_size)
             _, loss = self.session.run([self.train_op, self.loss], feed_dict={self.x: batch_x, self.label: batch_y})
             if (step + 1) % 1000 == 0:
                 logging.warning("Step: {0} | Loss: {1:.7f}".format(step + 1, loss))

@@ -5,9 +5,9 @@ import logging
 import os
 
 from algorithm import config
-from base.env.stock_market import Market
-from base.algorithm.model import BaseSLTFModel
+from base.env.market import Market
 from checkpoints import CHECKPOINTS_DIR
+from base.algorithm.model import BaseSLTFModel
 from helper.args_parser import model_launcher_parser
 
 
@@ -53,7 +53,7 @@ class Algorithm(BaseSLTFModel):
 
     def train(self):
         for step in range(self.train_steps):
-            batch_x, batch_y = self.env.get_stock_batch_data(self.batch_size)
+            batch_x, batch_y = self.env.get_batch_data(self.batch_size)
             x_rnn, x_cnn = batch_x, batch_x.reshape((-1, self.seq_length, self.x_space, 1))
             _, loss = self.session.run([self.train_op, self.loss], feed_dict={self.rnn_x: x_rnn,
                                                                               self.cnn_x: x_cnn,

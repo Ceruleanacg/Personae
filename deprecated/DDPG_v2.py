@@ -7,7 +7,7 @@ import torch
 from torch.autograd import Variable
 from torch import FloatTensor
 
-from base.env.stock_market import Market
+from deprecated.stock_market import Market
 from base.algorithm.model import BaseRLPTModel
 from helper.args_parser import model_launcher_parser
 
