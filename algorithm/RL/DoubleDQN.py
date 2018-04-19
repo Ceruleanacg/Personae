@@ -5,8 +5,8 @@ import numpy as np
 import os
 
 from algorithm import config
+from base.env.market import Market
 from checkpoints import CHECKPOINTS_DIR
-from base.env.stock_market import Market
 from base.algorithm.model import BaseRLTFModel
 from helper.data_logger import algorithm_logger
 from helper.args_parser import model_launcher_parser
@@ -107,7 +107,7 @@ class Algorithm(BaseRLTFModel):
                 s = self.env.reset(self.mode)
                 while True:
                     c, a, a_index = self.predict(s)
-                    s_next, r, status, info = self.env.forward_v2(c, a)
+                    s_next, r, status, info = self.env.forward(c, a)
                     self.save_transition(s, a_index, r, s_next)
                     self.train()
                     s = s_next
@@ -155,7 +155,7 @@ def main(args):
         "enable_summary_writer": True
     })
     algorithm.run()
-    algorithm.eval_v2()
+    algorithm.eval()
     algorithm.plot()
 
 

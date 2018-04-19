@@ -139,21 +139,11 @@ class BaseRLTFModel(BaseTFModel):
         except KeyError:
             self.save_episode = 10
 
-    def eval_v1(self):
-        s = self.env.reset('eval')
-        while True:
-            a = self.predict(s)
-            s_next, r, status, info = self.env.forward_v1(a)
-            s = s_next
-            if status == self.env.Done:
-                self.env.trader.log_asset(0)
-                break
-
-    def eval_v2(self):
+    def eval(self):
         s = self.env.reset('eval')
         while True:
             c, a, _ = self.predict(s)
-            s_next, r, status, info = self.env.forward_v2(c, a)
+            s_next, r, status, info = self.env.forward(c, a)
             s = s_next
             if status == self.env.Done:
                 self.env.trader.log_asset(0)
@@ -164,10 +154,10 @@ class BaseRLTFModel(BaseTFModel):
             json.dump(self.env.trader.history_profits, fp, indent=True)
 
         with open(self.save_path + '_baseline_profits.json', mode='w') as fp:
-            json.dump(self.env.trader.history_baseline_profits, fp, indent=True)
+            json.dump(self.env.trader.history_baselines, fp, indent=True)
 
         data_ploter.plot_profits_series(
-            self.env.trader.history_baseline_profits,
+            self.env.trader.history_baselines,
             self.env.trader.history_profits,
             self.save_path
         )
@@ -253,7 +243,7 @@ class BaseSLTFModel(BaseTFModel):
 
     def eval_and_plot(self):
 
-        x, label = self.env.get_stock_test_data()
+        x, label = self.env.get_test_data()
 
         y = self.predict(x)
 

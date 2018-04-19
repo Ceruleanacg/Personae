@@ -5,9 +5,9 @@ import logging
 import os
 
 from algorithm import config
-from base.env.stock_market import Market
-from base.algorithm.model import BaseSLTFModel
+from base.env.market import Market
 from checkpoints import CHECKPOINTS_DIR
+from base.algorithm.model import BaseSLTFModel
 from helper.args_parser import model_launcher_parser
 
 
@@ -48,7 +48,7 @@ class Algorithm(BaseSLTFModel):
 
     def train(self):
         for step in range(self.train_steps):
-            batch_x, batch_y = self.env.get_stock_batch_data(self.batch_size)
+            batch_x, batch_y = self.env.get_batch_data(self.batch_size)
             _, loss = self.session.run([self.train_op, self.loss], feed_dict={self.x: batch_x, self.label: batch_y})
             if (step + 1) % 1000 == 0:
                 logging.warning("Step: {0} | Loss: {1:.7f}".format(step + 1, loss))
@@ -67,6 +67,7 @@ def main(args):
         # "mode": "test",
         "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "NaiveLSTM", "model"),
         "summary_path": os.path.join(CHECKPOINTS_DIR, "SL", "NaiveLSTM", "summary"),
+        "hidden_size": 5,
         "enable_saver": True,
         "enable_summary_writer": True
     })

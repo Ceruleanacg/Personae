@@ -37,7 +37,7 @@ Implement of simple LSTM based model with TensorFlow.
 
 A basic test environment of Financial Market is implemented.
 
-- [Stock Market](base/env/stock_market.py)   
+- [Stock Market](base/env/market.py)   
 Implement of Stock Market, Trader, Positions as a gym env (gym is not required), which can give a env for regression or sequence data generating for RL or SL model.
 
 Also, more function is updating.
