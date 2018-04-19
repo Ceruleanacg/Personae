@@ -3,7 +3,7 @@
 import argparse
 
 stock_codes = ["600036", "601328", "601998", "601398"]
-future_codes = ["AU88", "AG88", "CU88", "AL88"]
+future_codes = ["AU88", "RB88", "CU88", "AL88"]
 
 stock_spider_parser = argparse.ArgumentParser()
 stock_spider_parser.add_argument("-c", "--codes", default=stock_codes, nargs="+")

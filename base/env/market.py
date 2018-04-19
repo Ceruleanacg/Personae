@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import math
 
-from sklearn import preprocessing
+from sklearn.preprocessing import MinMaxScaler
 from base.env.trader import Trader
 from base.model.document import Stock, Future
 
@@ -41,6 +41,9 @@ class Market(object):
         self.iter_dates = None
         self.current_date = None
 
+        # Init scalers.
+        self.scalers = [MinMaxScaler() for _ in self.codes]
+
         # Initialize parameters.
         self._init_options(**options)
 
@@ -50,7 +53,7 @@ class Market(object):
     def _init_options(self, **options):
 
         try:
-            self.m_type = options['market_type']
+            self.m_type = options['market']
         except KeyError:
             self.m_type = 'stock'
 
@@ -91,8 +94,8 @@ class Market(object):
         except KeyError:
             self.training_data_ratio = 0.7
 
-        self.doc_class = Stock if self.m_type == 'stock' else Future
         self.trader = Trader(self, cash=self.init_cash)
+        self.doc_class = Stock if self.m_type == 'stock' else Future
 
     def _init_data(self, start_date, end_date):
         self._init_data_frames(start_date, end_date)
@@ -113,7 +116,7 @@ class Market(object):
         # Init columns and data set.
         columns, dates_set = ['open', 'high', 'low', 'close', 'volume'], set()
         # Load data.
-        for code in self.codes:
+        for index, code in enumerate(self.codes):
             # Load instrument docs by code.
             instrument_docs = self.doc_class.get_k_data(code, start_date, end_date)
             # Init instrument dicts.
@@ -125,7 +128,9 @@ class Market(object):
             # Update dates set.
             dates_set = dates_set.union(dates)
             # Build origin and scaled frames.
-            instruments_scaled = preprocessing.MinMaxScaler().fit_transform(instruments)
+            scaler = self.scalers[index]
+            scaler.fit(instruments)
+            instruments_scaled = scaler.transform(instruments)
             origin_frame = pd.DataFrame(data=instruments, index=dates, columns=columns)
             scaled_frame = pd.DataFrame(data=instruments_scaled, index=dates, columns=columns)
             # Build code - frame map.
