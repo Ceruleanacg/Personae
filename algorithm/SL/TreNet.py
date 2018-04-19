@@ -70,13 +70,7 @@ class Algorithm(BaseSLTFModel):
 
 
 def main(args):
-    # env = Market(args.codes, **{
-    #     "market_type": args.market,
-    #     "use_sequence": True})
-    env = Market(["AU88", "AG88", "CU88", "AL88"], **{
-        # "market_type": args.market,
-        "market_type": "future",
-        "use_sequence": True})
+    env = Market(args.codes, **{"use_sequence": True})
     algorithm = Algorithm(tf.Session(config=config), env, env.seq_length, env.data_dim, env.code_count, **{
         "mode": args.mode,
         # "mode": "test",
