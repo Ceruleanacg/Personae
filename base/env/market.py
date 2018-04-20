@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import math
 
-from sklearn import preprocessing
+from sklearn.preprocessing import MinMaxScaler
 from base.env.trader import Trader
 from base.model.document import Stock, Future
 
@@ -41,6 +41,9 @@ class Market(object):
         self.iter_dates = None
         self.current_date = None
 
+        # Init scalers.
+        self.scalers = [MinMaxScaler() for _ in self.codes]
+
         # Initialize parameters.
         self._init_options(**options)
 
@@ -50,7 +53,7 @@ class Market(object):
     def _init_options(self, **options):
 
         try:
-            self.m_type = options['market_type']
+            self.m_type = options['market']
         except KeyError:
             self.m_type = 'stock'
 
@@ -92,6 +95,7 @@ class Market(object):
             self.training_data_ratio = 0.7
 
         self.trader = Trader(self, cash=self.init_cash)
+        self.doc_class = Stock if self.m_type == 'stock' else Future
 
     def _init_data(self, start_date, end_date):
         self._init_data_frames(start_date, end_date)
@@ -101,7 +105,7 @@ class Market(object):
     def _remove_invalid_codes(self):
         if not len(self.codes):
             raise ValueError("Fatal error, odes cannot be empty.")
-        valid_codes = [code for code in self.codes if Stock.exist_in_db(code)]
+        valid_codes = [code for code in self.codes if self.doc_class.exist_in_db(code)]
         if not len(valid_codes):
             raise ValueError("Fatal error, no valid codes in database.")
         self.codes = valid_codes
@@ -111,12 +115,10 @@ class Market(object):
         self._remove_invalid_codes()
         # Init columns and data set.
         columns, dates_set = ['open', 'high', 'low', 'close', 'volume'], set()
-        # Init document class.
-        doc_class = Stock if self.m_type == 'stock' else Future
         # Load data.
-        for code in self.codes:
+        for index, code in enumerate(self.codes):
             # Load instrument docs by code.
-            instrument_docs = doc_class.get_k_data(code, start_date, end_date)
+            instrument_docs = self.doc_class.get_k_data(code, start_date, end_date)
             # Init instrument dicts.
             instrument_dicts = [instrument.to_dic() for instrument in instrument_docs]
             # Split dates.
@@ -126,7 +128,9 @@ class Market(object):
             # Update dates set.
             dates_set = dates_set.union(dates)
             # Build origin and scaled frames.
-            instruments_scaled = preprocessing.MinMaxScaler().fit_transform(instruments)
+            scaler = self.scalers[index]
+            scaler.fit(instruments)
+            instruments_scaled = scaler.transform(instruments)
             origin_frame = pd.DataFrame(data=instruments, index=dates, columns=columns)
             scaled_frame = pd.DataFrame(data=instruments_scaled, index=dates, columns=columns)
             # Build code - frame map.
@@ -148,8 +152,8 @@ class Market(object):
             self._init_sequence_data()
 
     def _init_series_data(self):
-        # Scale to valid dates.
-        self.dates = self.dates[: -1 - 1]
+        # Calculate data count.
+        self.data_count = len(self.dates[: -1])
         # Init scaled_x, scaled_y.
         scaled_data_x, scaled_data_y = [], []
         for index, date in enumerate(self.dates):
@@ -167,24 +171,34 @@ class Market(object):
         # Convert list to array.
         self.data_x = np.array(scaled_data_x)
         self.data_y = np.array(scaled_data_y)
-        # Calculate data count.
-        self.data_count = len(scaled_data_x)
 
     def _init_sequence_data(self):
+        # Calculate data count.
+        self.data_count = len(self.dates[: -1 - self.seq_length])
+        # Calculate bound index.
+        self.bound_index = int(self.data_count * self.training_data_ratio)
         # Init seqs_x, seqs_y.
         scaled_seqs_x, scaled_seqs_y = [], []
         # Scale to valid dates.
-        for date_index, date in enumerate(self.dates[:-1 - 1]):
+        for date_index, date in enumerate(self.dates[: -1]):
             # Continue until valid date index.
             if date_index < self.seq_length:
                 continue
             data_x, data_y = [], []
             for code in self.codes:
-                # Get instrument seq by code.
-                instruments = self.scaled_frames[code].iloc[date_index - self.seq_length: date_index + 1]
-                # Get instrument data.
-                data_x.append(np.array(instruments[:-1]))
-                data_y.append(np.array(instruments.iloc[-1]['close']))
+                # Get scaled frame by code.
+                scaled_frame = self.scaled_frames[code]
+                # Get instrument data x.
+                instruments_x = scaled_frame.iloc[date_index - self.seq_length: date_index]
+                # Get instrument data y.
+                if date_index < self.bound_index:
+                    # Get y, y is not at date index, but plus 1. (Training Set)
+                    instruments_y = scaled_frame.iloc[date_index + 1]['close']
+                else:
+                    # Get y, y is at date index. (Test Set)
+                    instruments_y = scaled_frame.iloc[date_index]['close']
+                data_x.append(np.array(instruments_x))
+                data_y.append(np.array(instruments_y))
             # Convert list to array.
             data_x = np.array(data_x)
             data_y = np.array(data_y)
@@ -200,15 +214,13 @@ class Market(object):
         # Convert seq from list to array.
         self.seq_data_x = np.array(scaled_seqs_x)
         self.seq_data_y = np.array(scaled_seqs_y)
-        # Calculate data count.
-        self.data_count = len(scaled_seqs_x)
 
     def _init_data_indices(self):
         # Calculate indices range.
         self.data_indices = np.arange(0, self.data_count)
         # Calculate train and eval indices.
-        self.t_data_indices = self.data_indices[:int(self.data_count * self.training_data_ratio)]
-        self.e_data_indices = self.data_indices[int(self.data_count * self.training_data_ratio):]
+        self.t_data_indices = self.data_indices[:self.bound_index]
+        self.e_data_indices = self.data_indices[self.bound_index:]
         # Generate train and eval dates.
         self.t_dates = self.dates[:int(len(self.dates) * self.training_data_ratio)]
         self.e_dates = self.dates[int(len(self.dates) * self.training_data_ratio):]
