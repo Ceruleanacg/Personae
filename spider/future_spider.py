@@ -15,8 +15,9 @@ def init(context):
 
 def before_trading(context):
     if not context.has_save_data:
+        print(all_instruments(type='Future'))
         for code in config['args'].codes:
-            items = history_bars(code, 20000, '1d')
+            items = history_bars(code, 200000, '1d')
             for item in items:
                 future = Future()
                 future.code = code
@@ -43,7 +44,7 @@ if __name__ == '__main__':
     config = {
         "base": {
             "start_date": "2018-01-01",
-            "end_date": "2018-01-02",
+            "end_date": "20018-01-02",
             "benchmark": "AU88",
             "accounts": {
                 "future": 100000
