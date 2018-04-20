@@ -152,8 +152,8 @@ class Market(object):
             self._init_sequence_data()
 
     def _init_series_data(self):
-        # Scale to valid dates.
-        self.dates = self.dates[: -1 - 1]
+        # Calculate data count.
+        self.data_count = len(self.dates[: -1])
         # Init scaled_x, scaled_y.
         scaled_data_x, scaled_data_y = [], []
         for index, date in enumerate(self.dates):
@@ -171,24 +171,34 @@ class Market(object):
         # Convert list to array.
         self.data_x = np.array(scaled_data_x)
         self.data_y = np.array(scaled_data_y)
-        # Calculate data count.
-        self.data_count = len(scaled_data_x)
 
     def _init_sequence_data(self):
+        # Calculate data count.
+        self.data_count = len(self.dates[: -1 - self.seq_length])
+        # Calculate bound index.
+        self.bound_index = int(self.data_count * self.training_data_ratio)
         # Init seqs_x, seqs_y.
         scaled_seqs_x, scaled_seqs_y = [], []
         # Scale to valid dates.
-        for date_index, date in enumerate(self.dates[:-1 - 1]):
+        for date_index, date in enumerate(self.dates[: -1]):
             # Continue until valid date index.
             if date_index < self.seq_length:
                 continue
             data_x, data_y = [], []
             for code in self.codes:
-                # Get instrument seq by code.
-                instruments = self.scaled_frames[code].iloc[date_index - self.seq_length: date_index + 1]
-                # Get instrument data.
-                data_x.append(np.array(instruments[:-1]))
-                data_y.append(np.array(instruments.iloc[-1]['close']))
+                # Get scaled frame by code.
+                scaled_frame = self.scaled_frames[code]
+                # Get instrument data x.
+                instruments_x = scaled_frame.iloc[date_index - self.seq_length: date_index]
+                # Get instrument data y.
+                if date_index < self.bound_index:
+                    # Get y, y is not at date index, but plus 1. (Training Set)
+                    instruments_y = scaled_frame.iloc[date_index + 1]['close']
+                else:
+                    # Get y, y is at date index. (Test Set)
+                    instruments_y = scaled_frame.iloc[date_index]['close']
+                data_x.append(np.array(instruments_x))
+                data_y.append(np.array(instruments_y))
             # Convert list to array.
             data_x = np.array(data_x)
             data_y = np.array(data_y)
@@ -204,15 +214,13 @@ class Market(object):
         # Convert seq from list to array.
         self.seq_data_x = np.array(scaled_seqs_x)
         self.seq_data_y = np.array(scaled_seqs_y)
-        # Calculate data count.
-        self.data_count = len(scaled_seqs_x)
 
     def _init_data_indices(self):
         # Calculate indices range.
         self.data_indices = np.arange(0, self.data_count)
         # Calculate train and eval indices.
-        self.t_data_indices = self.data_indices[:int(self.data_count * self.training_data_ratio)]
-        self.e_data_indices = self.data_indices[int(self.data_count * self.training_data_ratio):]
+        self.t_data_indices = self.data_indices[:self.bound_index]
+        self.e_data_indices = self.data_indices[self.bound_index:]
         # Generate train and eval dates.
         self.t_dates = self.dates[:int(len(self.dates) * self.training_data_ratio)]
         self.e_dates = self.dates[int(len(self.dates) * self.training_data_ratio):]
