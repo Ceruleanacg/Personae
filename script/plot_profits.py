@@ -6,21 +6,28 @@ import os
 
 from checkpoints import CHECKPOINTS_DIR
 
-with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'DDPG', 'model_baseline_profits.json')) as fp:
-    profits_baseline = json.load(fp)
 
-with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'DDPG', 'model_history_profits.json')) as fp:
-    profits_DDPG = json.load(fp)
+def load_profits(market='stock'):
 
-with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'DoubleDQN', 'model_history_profits.json')) as fp:
-    profits_DoubleDQN = json.load(fp)
+    with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'DDPG', market, 'model_baseline_profits.json')) as fp:
+        p_baseline = json.load(fp)
 
-with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'DuelingDQN', 'model_history_profits.json')) as fp:
-    profits_DuelingDQN = json.load(fp)
+    with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'DDPG', market, 'model_history_profits.json')) as fp:
+        p_ddpg = json.load(fp)
 
-with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'PolicyGradient', 'model_history_profits.json')) as fp:
-    profits_PG = json.load(fp)
+    with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'DoubleDQN', market, 'model_history_profits.json')) as fp:
+        p_double_dqn = json.load(fp)
 
+    with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'DuelingDQN', market, 'model_history_profits.json')) as fp:
+        p_dueling_dqn = json.load(fp)
+
+    with open(os.path.join(CHECKPOINTS_DIR, 'RL', 'PolicyGradient', market, 'model_history_profits.json')) as fp:
+        p_policy_gradient = json.load(fp)
+
+    return p_baseline, p_ddpg, p_double_dqn, p_dueling_dqn, p_policy_gradient
+
+
+profits_baseline, profits_DDPG, profits_DoubleDQN, profits_DuelingDQN, profits_PG = load_profits('stock')
 
 plt.figure(figsize=(20, 15))
 plt.subplot(111)

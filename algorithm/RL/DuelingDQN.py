@@ -143,20 +143,33 @@ class Algorithm(BaseRLTFModel):
 
 
 def main(args):
-    env = Market(args.codes)
-    algorithm = Algorithm(tf.Session(config=config), env, env.trader.action_space, env.data_dim, **{
-        "mode": args.mode,
-        # "mode": "test",
-        "episodes": args.episode,
-        "save_path": os.path.join(CHECKPOINTS_DIR, "RL", "DuelingDQN", "model"),
-        "summary_path": os.path.join(CHECKPOINTS_DIR, "RL", "DuelingDQN", "summary"),
-        "enable_saver": True,
-        "enable_summary_writer": True
+    mode = args.mode
+    codes = args.codes
+    # codes = ["AU88", "RB88", "CU88", "AL88"]
+    market = args.market
+    episode = args.episode
+    training_data_ratio = args.training_data_ratio
+
+    env = Market(codes, start_date="2008-01-01", end_date="2018-01-01", **{
+        "market": market,
+        # "use_sequence": True,
+        "training_data_ratio": training_data_ratio,
     })
+
+    model_name = os.path.basename(__file__).split('.')[0]
+
+    algorithm = Algorithm(tf.Session(config=config), env, env.trader.action_space, env.data_dim, **{
+        "mode": mode,
+        "episodes": episode,
+        "enable_saver": True,
+        "enable_summary_writer": True,
+        "save_path": os.path.join(CHECKPOINTS_DIR, "RL", model_name, market, "model"),
+        "summary_path": os.path.join(CHECKPOINTS_DIR, "RL", model_name, market, "summary"),
+    })
+
     algorithm.run()
     algorithm.eval()
     algorithm.plot()
-
 
 if __name__ == '__main__':
     main(model_launcher_parser.parse_args())

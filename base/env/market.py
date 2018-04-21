@@ -154,9 +154,11 @@ class Market(object):
     def _init_series_data(self):
         # Calculate data count.
         self.data_count = len(self.dates[: -1])
+        # Calculate bound index.
+        self.bound_index = int(self.data_count * self.training_data_ratio)
         # Init scaled_x, scaled_y.
         scaled_data_x, scaled_data_y = [], []
-        for index, date in enumerate(self.dates):
+        for index, date in enumerate(self.dates[: -1]):
             # Get current x, y.
             x = [self.scaled_frames[code].iloc[index] for code in self.codes]
             y = [self.scaled_frames[code].iloc[index + 1] for code in self.codes]

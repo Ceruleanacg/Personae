@@ -61,16 +61,33 @@ class Algorithm(BaseSLTFModel):
 
 
 def main(args):
-    env = Market(args.codes, **{"use_sequence": True})
+
+    # mode = args.mode
+    mode = "train"
+    codes = args.codes
+    # codes = ["AU88", "RB88", "CU88", "AL88"]
+    market = args.market
+    train_steps = args.train_steps
+    training_data_ratio = args.training_data_ratio
+
+    env = Market(codes, start_date="2008-01-01", end_date="2018-01-01", **{
+        "market": market,
+        "use_sequence": True,
+        "training_data_ratio": training_data_ratio,
+    })
+
+    model_name = os.path.basename(__file__).split('.')[0]
+
     algorithm = Algorithm(tf.Session(config=config), env, env.seq_length, env.data_dim, env.code_count, **{
-        "mode": args.mode,
-        # "mode": "test",
-        "save_path": os.path.join(CHECKPOINTS_DIR, "SL", "NaiveLSTM", "model"),
-        "summary_path": os.path.join(CHECKPOINTS_DIR, "SL", "NaiveLSTM", "summary"),
+        "mode": mode,
         "hidden_size": 5,
         "enable_saver": True,
-        "enable_summary_writer": True
+        "train_steps": train_steps,
+        "enable_summary_writer": True,
+        "save_path": os.path.join(CHECKPOINTS_DIR, "SL", model_name, market, "model"),
+        "summary_path": os.path.join(CHECKPOINTS_DIR, "SL", model_name, market, "summary"),
     })
+
     algorithm.run()
     algorithm.eval_and_plot()
 

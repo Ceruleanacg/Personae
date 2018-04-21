@@ -10,8 +10,8 @@ def plot_stock_series(codes, y, label, save_path, y_desc='Predict', label_desc='
     for index, code in enumerate(codes):
         plt.subplot(row * 100 + col * 10 + (index + 1))
         plt.title(code)
-        plt.plot(y[:, index], label=y_desc)
-        plt.plot(label[:, index], label=label_desc)
+        plt.plot(y[:, index], 'o-', label=y_desc)
+        plt.plot(label[:, index], 'o-', label=label_desc)
         plt.legend(loc='upper left')
     # plt.show()
     plt.savefig(save_path, dpi=200)

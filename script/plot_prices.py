@@ -9,17 +9,23 @@ import os
 from helper.args_parser import stock_codes
 from checkpoints import CHECKPOINTS_DIR
 
-with open(os.path.join(CHECKPOINTS_DIR, 'SL', 'NaiveLSTM', 'model_label.json')) as fp:
-    label = np.array(json.load(fp))
 
-with open(os.path.join(CHECKPOINTS_DIR, 'SL', 'NaiveLSTM', 'model_y.json')) as fp:
-    y_naive_lstm = np.array(json.load(fp))
+def load_profits(market='stock'):
+    with open(os.path.join(CHECKPOINTS_DIR, 'SL', 'NaiveLSTM', market, 'model_label.json')) as fp:
+        _label = np.array(json.load(fp))
 
-with open(os.path.join(CHECKPOINTS_DIR, 'SL', 'DualAttnRNN', 'model_y.json')) as fp:
-    y_dual_attn_rnn = np.array(json.load(fp))
+    with open(os.path.join(CHECKPOINTS_DIR, 'SL', 'NaiveLSTM', market, 'model_y.json')) as fp:
+        _y_naive_lstm = np.array(json.load(fp))
 
-with open(os.path.join(CHECKPOINTS_DIR, 'SL', 'TreNet', 'model_y.json')) as fp:
-    y_tre_net = np.array(json.load(fp))
+    with open(os.path.join(CHECKPOINTS_DIR, 'SL', 'DualAttnRNN', market, 'model_y.json')) as fp:
+        _y_dual_attn_rnn = np.array(json.load(fp))
+
+    with open(os.path.join(CHECKPOINTS_DIR, 'SL', 'TreNet', market, 'model_y.json')) as fp:
+        _y_tre_net = np.array(json.load(fp))
+    return _label, _y_naive_lstm, _y_dual_attn_rnn, _y_tre_net
+
+
+label, y_naive_lstm, y_dual_attn_rnn, y_tre_net = load_profits('stock')
 
 
 row, col = int(math.ceil(len(stock_codes) / 2)), int(math.ceil(len(stock_codes) / 2))
