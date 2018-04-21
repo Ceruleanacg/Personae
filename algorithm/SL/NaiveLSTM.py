@@ -63,12 +63,15 @@ class Algorithm(BaseSLTFModel):
 def main(args):
 
     # mode = args.mode
-    mode = "train"
-    codes = args.codes
-    # codes = ["AU88", "RB88", "CU88", "AL88"]
-    market = args.market
+    # mode = "train"
+    mode = 'test'
+    # codes = args.codes
+    codes = ["AU88", "RB88", "CU88", "AL88"]
+    # market = args.market
+    market = 'future'
     train_steps = args.train_steps
-    training_data_ratio = args.training_data_ratio
+    training_data_ratio = 0.7
+    # training_data_ratio = args.training_data_ratio
 
     env = Market(codes, start_date="2008-01-01", end_date="2018-01-01", **{
         "market": market,

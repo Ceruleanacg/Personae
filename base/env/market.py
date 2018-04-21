@@ -224,8 +224,8 @@ class Market(object):
         self.t_data_indices = self.data_indices[:self.bound_index]
         self.e_data_indices = self.data_indices[self.bound_index:]
         # Generate train and eval dates.
-        self.t_dates = self.dates[:int(len(self.dates) * self.training_data_ratio)]
-        self.e_dates = self.dates[int(len(self.dates) * self.training_data_ratio):]
+        self.t_dates = self.dates[:self.bound_index]
+        self.e_dates = self.dates[self.bound_index:]
 
     def _origin_data(self, code, date):
         return self.origin_frames[code].loc[date]
@@ -292,7 +292,7 @@ class Market(object):
         if self.trader.action_times == self.code_count:
             self.trader.action_times = 0
             try:
-                self.current_date, self.next_date = next(self.iter_dates), next(self.iter_dates)
+                self.current_date, self.next_date = self.next_date, next(self.iter_dates)
             except StopIteration:
                 episode_done = self.Done
             finally:

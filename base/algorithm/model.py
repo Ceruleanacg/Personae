@@ -140,6 +140,7 @@ class BaseRLTFModel(BaseTFModel):
             self.save_episode = 10
 
     def eval(self):
+        self.mode = 'test'
         s = self.env.reset('eval')
         while True:
             c, a, _ = self.predict(s)
