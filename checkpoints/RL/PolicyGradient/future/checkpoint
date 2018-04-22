@@ -1,0 +1,2 @@
+model_checkpoint_path: "/Users/shuyu/Desktop/Affair/Machine Learning/mayu/checkpoints/RL/PolicyGradient/future/model"
+all_model_checkpoint_paths: "/Users/shuyu/Desktop/Affair/Machine Learning/mayu/checkpoints/RL/PolicyGradient/future/model"
