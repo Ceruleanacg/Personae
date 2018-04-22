@@ -1,14 +1,14 @@
 FROM ceruleanwang/quant-base:latest
 
-ENV HARU_DIR   /app/haru
-ENV MAYU_DIR   /app/mayu
+ENV PROJECT_DIR   /app/Personae
 ENV PYTHONPATH $PYTHONPATH:/app
-ENV DEBUG      0
 
-WORKDIR $MAYU_DIR
+WORKDIR $PROJECT_DIR
 
 ENTRYPOINT ["python3.5"]
 
 EXPOSE 80
+EXPOSE 8998
+EXPOSE 8999
 EXPOSE 9000
 
