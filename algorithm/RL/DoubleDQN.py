@@ -145,10 +145,13 @@ class Algorithm(BaseRLTFModel):
 
 def main(args):
     mode = args.mode
+    # mode = 'test'
     codes = args.codes
     # codes = ["AU88", "RB88", "CU88", "AL88"]
     market = args.market
+    # market = 'future'
     episode = args.episode
+    # episode = 1000
     training_data_ratio = args.training_data_ratio
 
     env = Market(codes, start_date="2008-01-01", end_date="2018-01-01", **{
