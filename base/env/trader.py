@@ -32,6 +32,8 @@ class Trader(object):
         self.action_times = 0
         # Init initial cash.
         self.initial_cash = cash
+        # Init total rewards.
+        self.total_rewards = 0
         # Init current action code.
         self.cur_action_code = None
         # Init current action status.
@@ -133,6 +135,7 @@ class Trader(object):
         self.positions = []
         self.history_profits = []
         self.history_baselines = []
+        self.total_rewards = 0
 
     def reset_reward(self):
         self.reward = 0
@@ -148,7 +151,8 @@ class Trader(object):
             "Episode: {0} | "
             "Cash: {1:.2f} | "
             "Holdings: {2:.2f} | "
-            "Profits: {3:.2f}".format(episode, self.cash, self.holdings_value, self.profits)
+            "Profits: {3:.2f} | "
+            "Rewards: {4}".format(episode, self.cash, self.holdings_value, self.profits, self.total_rewards)
         )
 
     def log_reward(self):
@@ -174,13 +178,14 @@ class Trader(object):
         else:
             if action_status == ActionStatus.Success:
                 if position.pro_value > position.cur_value:
-                    self.reward += 70
+                    self.reward += 50
                 else:
                     self.reward -= 50
             else:
                 self.reward -= 100
         self.cur_action_status = action_status
         self.cur_action_code = action_code
+        self.total_rewards += self.reward
 
     def _exist_position(self, code):
         return True if len([position.code for position in self.positions if position.code == code]) else False
