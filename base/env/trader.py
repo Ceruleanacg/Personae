@@ -156,7 +156,7 @@ class Trader(object):
         )
 
     def _update_reward(self, action_code, action_status, position):
-        self.reward = self._calculate_reward_v1(action_code, action_status, position)
+        self.reward = self._calculate_reward_v2(action_code, action_status, position)
         self.total_rewards += self.reward
         self.cur_action_code = action_code
         self.cur_action_status = action_status
@@ -172,11 +172,19 @@ class Trader(object):
         if action_status == ActionStatus.Failed:
             reward = -100
         else:
-            if position.pro_value >= position.cur_price:
+            if position.pro_value >= position.cur_value:
                 if action_code == ActionCode.Hold:
                     reward = 50
                 else:
                     reward = 100
             else:
                 reward = - 50
+        return reward
+
+    @staticmethod
+    def _calculate_reward_v2(_, action_status, position):
+        if action_status == ActionStatus.Success:
+            reward = position.pro_value - position.cur_value
+        else:
+            reward = -200
         return reward
