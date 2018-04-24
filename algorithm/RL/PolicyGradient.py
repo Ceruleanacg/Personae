@@ -43,13 +43,13 @@ class Algorithm(BaseRLTFModel):
         with tf.variable_scope('nn'):
 
             first_dense = tf.layers.dense(self.s,
-                                          50,
+                                          16,
                                           tf.nn.relu,
                                           kernel_initializer=w_init,
                                           bias_initializer=b_init)
 
             second_dense = tf.layers.dense(first_dense,
-                                           50,
+                                           16,
                                            tf.nn.relu,
                                            kernel_initializer=w_init,
                                            bias_initializer=b_init)
@@ -125,6 +125,7 @@ def main(args):
     # market = 'future'
     episode = args.episode
     # episode = 1000
+    # training_data_ratio = 0.1
     training_data_ratio = args.training_data_ratio
 
     env = Market(codes, start_date="2008-01-01", end_date="2018-01-01", **{
@@ -139,6 +140,7 @@ def main(args):
         "mode": mode,
         "episodes": episode,
         "enable_saver": True,
+        "learning_rate": 0.003,
         "enable_summary_writer": True,
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", model_name, market, "model"),
         "summary_path": os.path.join(CHECKPOINTS_DIR, "RL", model_name, market, "summary"),

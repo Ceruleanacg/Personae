@@ -61,6 +61,8 @@ class Market(object):
             self.init_cash = options['cash']
         except KeyError:
             self.init_cash = 100000
+        finally:
+            self.max_profits = self.init_cash * 5
 
         try:
             self.use_sequence = options['use_sequence']
@@ -236,9 +238,8 @@ class Market(object):
         else:
             data = self.data_x[self.dates.index(date)]
             if self.use_state_mix_cash:
-                # TODO - Normalization.
-                data = np.insert(data, 0, self.trader.cash / self.trader.initial_cash, axis=1)
-                data = np.insert(data, 0, self.trader.holdings_value / self.trader.initial_cash, axis=1)
+                data = np.insert(data, 0, self.trader.cash / self.max_profits, axis=1)
+                data = np.insert(data, 0, self.trader.holdings_value / self.max_profits, axis=1)
             return data
 
     def reset(self, mode='train'):
