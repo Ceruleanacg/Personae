@@ -16,16 +16,21 @@ def launch_model():
     # End date.
     end = "2018-01-01"
     # Episodes.
-    episode = 1000
+    episode = 500
     # Train steps.
     train_steps = 100000
     # Training data ratio.
     training_data_ratio = 0.8
 
-    cmd = 'docker run -t -v /home/duser/shuyu/Personae:/app/Personae/ --network=quant ceruleanwang/personae '
-    cmd += "python3.5 -n -c {} -s {} -e {}  --market {} --episode {} --train_steps {} --training_data_ratio".format(
-        model_name, codes, start, end, market, episode, train_steps, training_data_ratio
+    # Mounted dir.
+    mounted_dir = '/home/duser/shuyu/Personae:/app/Personae/'
+    image_name = 'ceruleanwang/personae'
+
+    rl_cmd = 'docker run -tv {} --network=quant {} algorithm/RL/'.format(mounted_dir, image_name)
+    rl_cmd += "{}.py -c {} -s {} -e {}  --market {} --episode {} --train_steps {} --training_data_ratio {}".format(
+        model_name, " ".join(codes), start, end, market, episode, train_steps, training_data_ratio
     )
+    cmd = rl_cmd
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())

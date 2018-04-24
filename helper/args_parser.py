@@ -16,7 +16,6 @@ future_spider_parser.add_argument("-s", "--start", default="2008-01-01")
 future_spider_parser.add_argument("-e", "--end", default="2018-01-01")
 
 model_launcher_parser = argparse.ArgumentParser()
-model_launcher_parser.add_argument("-n", "--name", default="DoubleDQN")
 model_launcher_parser.add_argument("-c", "--codes", default=stock_codes, nargs="+")
 model_launcher_parser.add_argument("-s", "--start", default="2008-01-01")
 model_launcher_parser.add_argument("-e", "--end", default="2018-01-01")
