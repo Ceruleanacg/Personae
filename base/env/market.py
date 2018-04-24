@@ -61,8 +61,6 @@ class Market(object):
             self.init_cash = options['cash']
         except KeyError:
             self.init_cash = 100000
-        finally:
-            self.max_profits = self.init_cash * 3
 
         try:
             self.logger = options['logger']
@@ -238,14 +236,14 @@ class Market(object):
         return self.origin_frames[code].loc[date]
 
     def _scaled_data_as_state(self, date):
-        if self.use_sequence:
-            return self.seq_data_x[self.dates.index(date)]
-        else:
+        if not self.use_sequence:
             data = self.data_x[self.dates.index(date)]
             if self.use_state_mix_cash:
-                data = np.insert(data, 0, self.trader.cash / self.max_profits, axis=1)
-                data = np.insert(data, 0, self.trader.holdings_value / self.max_profits, axis=1)
+                trader_state = self.trader.scaled_data_as_state()
+                data = np.insert(data, -1, trader_state).reshape((1, -1))
             return data
+        else:
+            return self.seq_data_x[self.dates.index(date)]
 
     def reset(self, mode='train'):
         # Reset trader.
@@ -334,7 +332,7 @@ class Market(object):
             if self.use_one_hot:
                 data_dim = self.code_count * self.scaled_frames[self.codes[0]].shape[1]
                 if self.use_state_mix_cash:
-                    data_dim += 2
+                    data_dim += (2 + self.code_count)
             else:
                 data_dim = self.code_count * self.scaled_frames[self.codes[0]].shape[1]
             return data_dim

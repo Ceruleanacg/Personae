@@ -22,7 +22,6 @@ class Trader(object):
     def __init__(self, market, cash=100000.0):
         # Init cash, market, codes.
         self.cash, self.market, self.codes = cash, market, market.codes
-
         # Init reward.
         self.reward = 0
         # Init holding positions.
@@ -31,6 +30,8 @@ class Trader(object):
         self.action_times = 0
         # Init initial cash.
         self.initial_cash = cash
+        # Init max cash.
+        self.max_cash = cash * 3
         # Init total rewards.
         self.total_rewards = 0
         # Init current action code.
@@ -128,6 +129,18 @@ class Trader(object):
                                 " holding value:{2:.2f}".format(code,
                                                                 self.cash,
                                                                 self.holdings_value))
+
+    def scaled_data_as_state(self):
+        scaled_data = [self.cash / self.max_cash, self.holdings_value / self.max_cash]
+        # Scale positions amount.
+        for code in self.codes:
+            if not self._exist_position(code):
+                scaled_data.append(0.0)
+            else:
+                position = self._position(code)
+                # TODO - Need updated, max amount is 10000.
+                scaled_data.append(position.amount / 10000)
+        return scaled_data
 
     def reset(self):
         self.cash = self.initial_cash
