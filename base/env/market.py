@@ -62,7 +62,7 @@ class Market(object):
         except KeyError:
             self.init_cash = 100000
         finally:
-            self.max_profits = self.init_cash * 5
+            self.max_profits = self.init_cash * 3
 
         try:
             self.use_sequence = options['use_sequence']

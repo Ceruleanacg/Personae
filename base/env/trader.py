@@ -155,40 +155,28 @@ class Trader(object):
             "Rewards: {4}".format(episode, self.cash, self.holdings_value, self.profits, self.total_rewards)
         )
 
-    def log_reward(self):
-        stock_market_logger.info("Reward: {}".format(self.reward))
-
     def _update_reward(self, action_code, action_status, position):
-        if action_code == ActionCode.Buy:
-            if action_status == ActionStatus.Success:
-                if position.pro_value > position.cur_value:
-                    self.reward += 70
-                else:
-                    self.reward -= 50
-            else:
-                self.reward -= 100
-        elif action_code == ActionCode.Sell:
-            if action_status == ActionStatus.Success:
-                if position.pro_value > position.cur_value:
-                    self.reward -= 70
-                else:
-                    self.reward += 50
-            else:
-                self.reward -= 100
-        else:
-            if action_status == ActionStatus.Success:
-                if position.pro_value > position.cur_value:
-                    self.reward += 50
-                else:
-                    self.reward -= 50
-            else:
-                self.reward -= 100
-        self.cur_action_status = action_status
-        self.cur_action_code = action_code
+        self.reward = self._calculate_reward_v1(action_code, action_status, position)
         self.total_rewards += self.reward
+        self.cur_action_code = action_code
+        self.cur_action_status = action_status
 
     def _exist_position(self, code):
         return True if len([position.code for position in self.positions if position.code == code]) else False
 
     def _position(self, code):
         return [position for position in self.positions if position.code == code][0]
+
+    @staticmethod
+    def _calculate_reward_v1(action_code, action_status, position):
+        if action_status == ActionStatus.Failed:
+            reward = -100
+        else:
+            if position.pro_value >= position.cur_price:
+                if action_code == ActionCode.Hold:
+                    reward = 50
+                else:
+                    reward = 100
+            else:
+                reward = - 50
+        return reward
