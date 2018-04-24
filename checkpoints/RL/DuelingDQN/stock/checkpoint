@@ -1,2 +1,2 @@
-model_checkpoint_path: "/Users/shuyu/Desktop/Affair/Machine Learning/mayu/checkpoints/RL/DuelingDQN/model"
-all_model_checkpoint_paths: "/Users/shuyu/Desktop/Affair/Machine Learning/mayu/checkpoints/RL/DuelingDQN/model"
+model_checkpoint_path: "/Users/shuyu/Desktop/Affair/Machine Learning/Personae/checkpoints/RL/DuelingDQN/stock/model"
+all_model_checkpoint_paths: "/Users/shuyu/Desktop/Affair/Machine Learning/Personae/checkpoints/RL/DuelingDQN/stock/model"

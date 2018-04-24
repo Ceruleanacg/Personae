@@ -65,6 +65,11 @@ class Market(object):
             self.max_profits = self.init_cash * 3
 
         try:
+            self.logger = options['logger']
+        except KeyError:
+            self.logger = None
+
+        try:
             self.use_sequence = options['use_sequence']
         except KeyError:
             self.use_sequence = False

@@ -5,7 +5,7 @@ import json
 from abc import abstractmethod
 from helper import data_ploter
 from tensorflow.contrib import rnn
-from helper.data_logger import algorithm_logger
+from helper.data_logger import generate_algorithm_logger
 
 
 class BaseTFModel(object):
@@ -24,6 +24,11 @@ class BaseTFModel(object):
             self.batch_size = options['batch_size']
         except KeyError:
             self.batch_size = 32
+
+        try:
+            self.logger = options['logger']
+        except KeyError:
+            self.logger = generate_algorithm_logger('model')
 
         try:
             self.enable_saver = options["enable_saver"]
@@ -165,7 +170,7 @@ class BaseRLTFModel(BaseTFModel):
 
     def save(self, episode):
         self.saver.save(self.session, self.save_path)
-        algorithm_logger.warning("Episode: {} | Saver reach checkpoint.".format(episode))
+        self.logger.warning("Episode: {} | Saver reach checkpoint.".format(episode))
 
     @abstractmethod
     def save_transition(self, s, a, r, s_next):
@@ -240,7 +245,7 @@ class BaseSLTFModel(BaseTFModel):
 
     def save(self, step):
         self.saver.save(self.session, self.save_path)
-        algorithm_logger.warning("Step: {} | Saver reach checkpoint.".format(step + 1))
+        self.logger.warning("Step: {} | Saver reach checkpoint.".format(step + 1))
 
     def eval_and_plot(self):
 

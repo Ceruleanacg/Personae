@@ -4,7 +4,6 @@ import math
 
 from enum import Enum
 from base.env.position import Position
-from helper.data_logger import stock_market_logger
 
 
 class ActionCode(Enum):
@@ -83,14 +82,14 @@ class Trader(object):
             # Update cash and holding price.
             self.cash -= amount * stock.close
             self._update_reward(ActionCode.Buy, ActionStatus.Success, position)
-            stock_market_logger.info("Code: {0},"
-                                     " buy success,"
-                                     " cash: {1:.2f},"
-                                     " holding value:{2:.2f}".format(code,
-                                                                     self.cash,
-                                                                     self.holdings_value))
+            self.market.logger.info("Code: {0},"
+                                    " buy success,"
+                                    " cash: {1:.2f},"
+                                    " holding value:{2:.2f}".format(code,
+                                                                    self.cash,
+                                                                    self.holdings_value))
         else:
-            stock_market_logger.info("Code: {}, not enough cash, cannot buy.".format(code))
+            self.market.logger.info("Code: {}, not enough cash, cannot buy.".format(code))
             if self._exist_position(code):
                 # If position exists, update status.
                 position = self._position(code)
@@ -100,7 +99,7 @@ class Trader(object):
     def sell(self, code, stock, amount, stock_next):
         # Check if position exists.
         if not self._exist_position(code):
-            stock_market_logger.info("Code: {}, not exists in Positions, sell failed.".format(code))
+            self.market.logger.info("Code: {}, not exists in Positions, sell failed.".format(code))
             return self._update_reward(ActionCode.Sell, ActionStatus.Failed, None)
         # Sell position if possible.
         position = self._position(code)
@@ -109,26 +108,26 @@ class Trader(object):
         # Update cash and holding price.
         self.cash += amount * stock.close
         self._update_reward(ActionCode.Sell, ActionStatus.Success, position)
-        stock_market_logger.info("Code: {0},"
-                                 " sell success,"
-                                 " cash: {1:.2f},"
-                                 " holding value:{2:.2f}".format(code,
-                                                                 self.cash,
-                                                                 self.holdings_value))
+        self.market.logger.info("Code: {0},"
+                                " sell success,"
+                                " cash: {1:.2f},"
+                                " holding value:{2:.2f}".format(code,
+                                                                self.cash,
+                                                                self.holdings_value))
 
     def hold(self, code, stock, _, stock_next):
         if not self._exist_position(code):
-            stock_market_logger.info("Code: {}, not exists in Positions, hold failed.".format(code))
+            self.market.logger.info("Code: {}, not exists in Positions, hold failed.".format(code))
             return self._update_reward(ActionCode.Hold, ActionStatus.Failed, None)
         position = self._position(code)
         position.update_status(stock.close, stock_next.close)
         self._update_reward(ActionCode.Hold, ActionStatus.Success, position)
-        stock_market_logger.info("Code: {0},"
-                                 " hold success,"
-                                 " cash: {1:.2f},"
-                                 " holding value:{2:.2f}".format(code,
-                                                                 self.cash,
-                                                                 self.holdings_value))
+        self.market.logger.info("Code: {0},"
+                                " hold success,"
+                                " cash: {1:.2f},"
+                                " holding value:{2:.2f}".format(code,
+                                                                self.cash,
+                                                                self.holdings_value))
 
     def reset(self):
         self.cash = self.initial_cash
@@ -147,12 +146,12 @@ class Trader(object):
         self.positions = [position for position in self.positions if position.amount > 0]
 
     def log_asset(self, episode):
-        stock_market_logger.warning(
+        self.market.logger.warning(
             "Episode: {0} | "
             "Cash: {1:.2f} | "
             "Holdings: {2:.2f} | "
             "Profits: {3:.2f} | "
-            "Rewards: {4}".format(episode, self.cash, self.holdings_value, self.profits, self.total_rewards)
+            "Rewards: {4:.2f}".format(episode, self.cash, self.holdings_value, self.profits, self.total_rewards)
         )
 
     def _update_reward(self, action_code, action_status, position):

@@ -1,2 +1,2 @@
-model_checkpoint_path: "/app/Personae/checkpoints/RL/PolicyGradient/stock/model"
-all_model_checkpoint_paths: "/app/Personae/checkpoints/RL/PolicyGradient/stock/model"
+model_checkpoint_path: "/Users/shuyu/Desktop/Affair/Machine Learning/Personae/checkpoints/RL/PolicyGradient/stock/model"
+all_model_checkpoint_paths: "/Users/shuyu/Desktop/Affair/Machine Learning/Personae/checkpoints/RL/PolicyGradient/stock/model"

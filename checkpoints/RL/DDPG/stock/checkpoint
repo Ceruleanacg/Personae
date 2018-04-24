@@ -1,2 +1,2 @@
-model_checkpoint_path: "/app/mayu/checkpoints/RL/DDPG/model"
-all_model_checkpoint_paths: "/app/mayu/checkpoints/RL/DDPG/model"
+model_checkpoint_path: "/Users/shuyu/Desktop/Affair/Machine Learning/Personae/checkpoints/RL/DDPG/stock/model"
+all_model_checkpoint_paths: "/Users/shuyu/Desktop/Affair/Machine Learning/Personae/checkpoints/RL/DDPG/stock/model"

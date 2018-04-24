@@ -9,8 +9,8 @@ from algorithm import config
 from base.env.market import Market
 from checkpoints import CHECKPOINTS_DIR
 from base.algorithm.model import BaseRLTFModel
-from helper.data_logger import algorithm_logger
 from helper.args_parser import model_launcher_parser
+from helper.data_logger import generate_algorithm_logger, generate_market_logger
 
 
 class Algorithm(BaseRLTFModel):
@@ -108,9 +108,9 @@ class Algorithm(BaseRLTFModel):
         return s, a, r, s_next
 
     def log_loss(self, episode):
-        algorithm_logger.warning("Episode: {0} | Actor Loss: {1:.2f} | Critic Loss: {2:.2f}".format(episode,
-                                                                                                    self.actor_loss,
-                                                                                                    self.critic_loss))
+        self.logger.warning("Episode: {0} | Actor Loss: {1:.2f} | Critic Loss: {2:.2f}".format(episode,
+                                                                                               self.actor_loss,
+                                                                                               self.critic_loss))
 
     def __build_actor_nn(self, state, scope, trainable=True):
 
@@ -172,21 +172,25 @@ def main(args):
     # market = 'future'
     episode = args.episode
     # episode = 1000
+    # training_data_ratio = 0.1
     training_data_ratio = args.training_data_ratio
+
+    model_name = os.path.basename(__file__).split('.')[0]
 
     env = Market(codes, start_date="2008-01-01", end_date="2018-01-01", **{
         "market": market,
         # "use_sequence": True,
+        "logger": generate_market_logger(model_name),
         "training_data_ratio": training_data_ratio,
     })
-
-    model_name = os.path.basename(__file__).split('.')[0]
 
     algorithm = Algorithm(tf.Session(config=config), env, env.trader.action_space, env.data_dim, **{
         "mode": mode,
         "episodes": episode,
         "enable_saver": True,
+        "learning_rate": 0.003,
         "enable_summary_writer": True,
+        "logger": generate_algorithm_logger(model_name),
         "save_path": os.path.join(CHECKPOINTS_DIR, "RL", model_name, market, "model"),
         "summary_path": os.path.join(CHECKPOINTS_DIR, "RL", model_name, market, "summary"),
     })
