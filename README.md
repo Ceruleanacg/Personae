@@ -98,9 +98,9 @@ And you can also use [Ansible](http://www.ansible.com.cn/) to run [CUDA-Playbook
 ### If you use Docker
 
 #### About base image
-My image for this repo is [ceruleanwang/haru](https://hub.docker.com/r/ceruleanwang/haru/), and haru is inherited from [ceruleanwang/quant](https://hub.docker.com/r/ceruleanwang/quant-base/).    
+My image for this repo is [ceruleanwang/personae](https://hub.docker.com/r/ceruleanwang/personae/), and personae is inherited from [ceruleanwang/quant-base](https://hub.docker.com/r/ceruleanwang/quant-base/).    
    
-The image [ceruleanwang/quant](https://hub.docker.com/r/ceruleanwang/quant-base/) is inherited from [nvidia/cuda:8.0-cudnn6-runtime](https://hub.docker.com/r/nvidia/cuda/). So please make sure your CUDA version and cuDNN version are correct. 
+The image [ceruleanwang/quant-base](https://hub.docker.com/r/ceruleanwang/quant-base/) is inherited from [nvidia/cuda:8.0-cudnn6-runtime](https://hub.docker.com/r/nvidia/cuda/). So please make sure your CUDA version and cuDNN version are correct. 
 
 #### Instructions
 First you should make sure you have stocks data in your mongodb.   
