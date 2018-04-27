@@ -161,4 +161,3 @@ algorithm = Algorithm(tf.Session(config=config), env, env.trader.action_space, e
 # TODO
 - More Implementations of Papers.
 - More High-Frequency Stocks Data.
-- Future Short Sale Supported.
