@@ -2,6 +2,7 @@
 
 import math
 
+from time import time
 from enum import Enum
 from base.env.position import Position
 
@@ -38,6 +39,8 @@ class Trader(object):
         self.cur_action_code = None
         # Init current action status.
         self.cur_action_status = None
+        # Init episode time.
+        self.episode_time = 0
 
         # Init history profits and baselines.
         self.history_profits = []
@@ -143,11 +146,12 @@ class Trader(object):
         return scaled_data
 
     def reset(self):
-        self.cash = self.initial_cash
         self.positions = []
-        self.history_profits = []
-        self.history_baselines = []
         self.total_rewards = 0
+        self.history_profits = []
+        self.episode_time = time()
+        self.history_baselines = []
+        self.cash = self.initial_cash
 
     def reset_reward(self):
         self.reward = 0
@@ -159,12 +163,20 @@ class Trader(object):
         self.positions = [position for position in self.positions if position.amount > 0]
 
     def log_asset(self, episode):
+        last_episode_time = self.episode_time
+        self.episode_time = time()
         self.market.logger.warning(
             "Episode: {0} | "
-            "Cash: {1:.2f} | "
-            "Holdings: {2:.2f} | "
-            "Profits: {3:.2f} | "
-            "Rewards: {4:.2f}".format(episode, self.cash, self.holdings_value, self.profits, self.total_rewards)
+            "Times: {1:.3f} | "
+            "Cash: {2:.2f} | "
+            "Holdings: {3:.2f} | "
+            "Profits: {4:.2f} | "
+            "Rewards: {5:.2f}".format(episode,
+                                      self.episode_time - last_episode_time,
+                                      self.cash,
+                                      self.holdings_value,
+                                      self.profits,
+                                      self.total_rewards)
         )
 
     def _update_reward(self, action_code, action_status, position):

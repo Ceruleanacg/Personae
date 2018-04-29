@@ -53,12 +53,16 @@ class Algorithm(BaseRLTFModel):
         self.update_a = [tf.assign(t_a, (1 - self.tau) * t_a + self.tau * p_a) for p_a, t_a in zipped_a_params]
         self.update_c = [tf.assign(t_c, (1 - self.tau) * t_c + self.tau * p_c) for p_c, t_c in zipped_c_params]
         # Initialize actor loss and train op.
-        self.a_loss = -tf.reduce_mean(self.q_predict)
-        self.a_train_op = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.a_loss, var_list=params[0])
+        with tf.variable_scope('actor_loss'):
+            self.a_loss = -tf.reduce_mean(self.q_predict)
+        with tf.variable_scope('actor_train'):
+            self.a_train_op = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.a_loss, var_list=params[0])
         # Initialize critic loss and train op.
         self.q_target = self.r + self.gamma * self.q_next
-        self.c_loss = tf.losses.mean_squared_error(self.q_target, self.q_predict)
-        self.c_train_op = tf.train.RMSPropOptimizer(self.learning_rate * 2).minimize(self.c_loss, var_list=params[2])
+        with tf.variable_scope('critic_loss'):
+            self.c_loss = tf.losses.mean_squared_error(self.q_target, self.q_predict)
+        with tf.variable_scope('critic_train'):
+            self.c_train_op = tf.train.RMSPropOptimizer(self.learning_rate * 2).minimize(self.c_loss, var_list=params[2])
         # Initialize variables.
         self.session.run(tf.global_variables_initializer())
 
@@ -114,7 +118,7 @@ class Algorithm(BaseRLTFModel):
 
     def __build_actor_nn(self, state, scope, trainable=True):
 
-        w_init, b_init = tf.random_normal_initializer(.0, .3), tf.constant_initializer(.1)
+        w_init, b_init = tf.random_normal_initializer(.0, .001), tf.constant_initializer(.1)
 
         with tf.variable_scope(scope):
             # state is ? * code_count * data_dim.
@@ -142,14 +146,15 @@ class Algorithm(BaseRLTFModel):
         with tf.variable_scope(scope):
 
             s_first_dense = tf.layers.dense(state,
-                                            64,
+                                            32,
                                             tf.nn.relu,
                                             kernel_initializer=w_init,
                                             bias_initializer=b_init,
                                             trainable=trainable)
 
             a_first_dense = tf.layers.dense(action,
-                                            64,
+                                            32,
+                                            tf.nn.relu,
                                             kernel_initializer=w_init,
                                             bias_initializer=b_init,
                                             trainable=trainable)
@@ -168,16 +173,17 @@ def main(args):
     # mode = 'test'
     codes = args.codes
     # codes = ["AU88", "RB88", "CU88", "AL88"]
+    # codes = ["T9999"]
     market = args.market
     # market = 'future'
     episode = args.episode
-    # episode = 1000
-    # training_data_ratio = 0.1
+    # episode = 2000
+    # training_data_ratio = 0.5
     training_data_ratio = args.training_data_ratio
 
     model_name = os.path.basename(__file__).split('.')[0]
 
-    env = Market(codes, start_date="2008-01-01", end_date="2018-01-01", **{
+    env = Market(codes, start_date="2012-01-01", end_date="2018-01-01", **{
         "market": market,
         # "use_sequence": True,
         "logger": generate_market_logger(model_name),

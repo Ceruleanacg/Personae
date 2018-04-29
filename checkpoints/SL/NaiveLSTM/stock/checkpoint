@@ -1,2 +1,2 @@
-model_checkpoint_path: "/Users/shuyu/Desktop/Affair/Machine Learning/mayu/checkpoints/SL/NaiveLSTM/model"
-all_model_checkpoint_paths: "/Users/shuyu/Desktop/Affair/Machine Learning/mayu/checkpoints/SL/NaiveLSTM/model"
+model_checkpoint_path: "/Users/shuyu/Desktop/Affair/Machine Learning/Personae/checkpoints/SL/NaiveLSTM/stock/model"
+all_model_checkpoint_paths: "/Users/shuyu/Desktop/Affair/Machine Learning/Personae/checkpoints/SL/NaiveLSTM/stock/model"

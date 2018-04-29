@@ -38,18 +38,18 @@ class Algorithm(BaseRLTFModel):
 
     def _init_nn(self):
         # Initialize predict actor and critic.
-        w_init, b_init = tf.random_normal_initializer(.0, .3), tf.constant_initializer(0.1)
+        w_init, b_init = tf.random_normal_initializer(.0, .001), tf.constant_initializer(0.1)
 
         with tf.variable_scope('nn'):
 
             first_dense = tf.layers.dense(self.s,
-                                          16,
+                                          32,
                                           tf.nn.relu,
                                           kernel_initializer=w_init,
                                           bias_initializer=b_init)
 
             second_dense = tf.layers.dense(first_dense,
-                                           16,
+                                           32,
                                            tf.nn.relu,
                                            kernel_initializer=w_init,
                                            bias_initializer=b_init)
@@ -121,16 +121,17 @@ def main(args):
     mode = 'test'
     codes = args.codes
     # codes = ["AU88", "RB88", "CU88", "AL88"]
+    # codes = ["T9999"]
     market = args.market
     # market = 'future'
     episode = args.episode
-    # episode = 1000
-    # training_data_ratio = 0.1
+    # episode = 2000
+    # training_data_ratio = 0.5
     training_data_ratio = args.training_data_ratio
 
     model_name = os.path.basename(__file__).split('.')[0]
 
-    env = Market(codes, start_date="2008-01-01", end_date="2018-01-01", **{
+    env = Market(codes, start_date="2012-01-01", end_date="2018-01-01", **{
         "market": market,
         # "use_sequence": True,
         "logger": generate_market_logger(model_name),

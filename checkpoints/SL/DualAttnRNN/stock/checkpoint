@@ -1,2 +1,2 @@
-model_checkpoint_path: "/Users/shuyu/Desktop/Affair/Machine Learning/mayu/checkpoints/SL/DualAttnRNN/model"
-all_model_checkpoint_paths: "/Users/shuyu/Desktop/Affair/Machine Learning/mayu/checkpoints/SL/DualAttnRNN/model"
+model_checkpoint_path: "/Users/shuyu/Desktop/Affair/Machine Learning/Personae/checkpoints/SL/DualAttnRNN/stock/model"
+all_model_checkpoint_paths: "/Users/shuyu/Desktop/Affair/Machine Learning/Personae/checkpoints/SL/DualAttnRNN/stock/model"

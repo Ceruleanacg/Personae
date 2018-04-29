@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import math
 
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 from base.env.trader import Trader
 from base.model.document import Stock, Future
 
@@ -40,9 +40,6 @@ class Market(object):
         self.next_date = None
         self.iter_dates = None
         self.current_date = None
-
-        # Init scalers.
-        self.scalers = [MinMaxScaler() for _ in self.codes]
 
         # Initialize parameters.
         self._init_options(**options)
@@ -99,6 +96,13 @@ class Market(object):
         except KeyError:
             self.training_data_ratio = 0.7
 
+        try:
+            scaler = options['scaler']
+        except KeyError:
+            scaler = StandardScaler
+
+        self.scaler = [scaler() for _ in self.codes]
+
         self.trader = Trader(self, cash=self.init_cash)
         self.doc_class = Stock if self.m_type == 'stock' else Future
 
@@ -133,7 +137,7 @@ class Market(object):
             # Update dates set.
             dates_set = dates_set.union(dates)
             # Build origin and scaled frames.
-            scaler = self.scalers[index]
+            scaler = self.scaler[index]
             scaler.fit(instruments)
             instruments_scaled = scaler.transform(instruments)
             origin_frame = pd.DataFrame(data=instruments, index=dates, columns=columns)
@@ -233,7 +237,8 @@ class Market(object):
         self.e_dates = self.dates[self.bound_index:]
 
     def _origin_data(self, code, date):
-        return self.origin_frames[code].loc[date]
+        date_index = self.dates.index(date)
+        return self.origin_frames[code].iloc[date_index]
 
     def _scaled_data_as_state(self, date):
         if not self.use_sequence:

@@ -39,8 +39,10 @@ class Algorithm(BaseRLTFModel):
         self.q_target = self.__build_critic_nn(self.s_next, 'q_target')
 
     def _init_op(self):
-        self.loss = tf.reduce_mean(tf.squared_difference(self.q_next, self.q_eval))
-        self.train_op = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.loss)
+        with tf.variable_scope('loss'):
+            self.loss = tf.reduce_mean(tf.squared_difference(self.q_next, self.q_eval))
+        with tf.variable_scope('train'):
+            self.train_op = tf.train.RMSPropOptimizer(self.learning_rate).minimize(self.loss)
         self.e_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_eval')
         self.t_params = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope='q_target')
         self.update_q_target_op = [tf.assign(t, e) for t, e in zip(self.t_params, self.e_params)]
@@ -148,16 +150,17 @@ def main(args):
     # mode = 'test'
     codes = args.codes
     # codes = ["AU88", "RB88", "CU88", "AL88"]
+    # codes = ["T9999"]
     market = args.market
     # market = 'future'
     episode = args.episode
-    # episode = 1000
-    # training_data_ratio = 0.1
+    # episode = 2000
+    # training_data_ratio = 0.5
     training_data_ratio = args.training_data_ratio
 
     model_name = os.path.basename(__file__).split('.')[0]
 
-    env = Market(codes, start_date="2008-01-01", end_date="2018-01-01", **{
+    env = Market(codes, start_date="2012-01-01", end_date="2018-01-01", **{
         "market": market,
         # "use_sequence": True,
         "logger": generate_market_logger(model_name),
