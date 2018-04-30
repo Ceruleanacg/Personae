@@ -52,7 +52,7 @@ Also, more functions are updating.
 + [Double-DQN](algorithm/RL/DoubleDQN.py)    
 + [Dueling-DQN](algorithm/RL/DuelingDQN.py)
 + [Policy Gradient (PG)](algorithm/RL/PolicyGradient.py)     
-Train a Agent to trade in stock market, using stock data set from 2008-01-01 to 2018-01-01 where 70% are training data, 30% are testing data.
+Train a Agent to trade in stock market, using stock data set from 2012-01-01 to 2018-01-01 where 70% are training data, 30% are testing data.
 
 <p align='center'>
   <img src='static/images/Profits.jpg'>
