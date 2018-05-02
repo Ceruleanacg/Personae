@@ -132,7 +132,7 @@ And they can be modified in:
 
 Then you can just run a model by:
 ```
-docker run -t -v local_project_dir:docker_project_dir --network=yuor_network ceruleanwang/haru algorithm/RL or SL/algorithm_name.py
+docker run -t -v local_project_dir:docker_project_dir --network=yuor_network ceruleanwang/personae algorithm/RL or SL/algorithm_name.py
 ```
 
 ### If you use Conda
