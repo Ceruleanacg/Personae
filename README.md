@@ -113,11 +113,11 @@ docker run -p 27017:27017 -v /data/db:/data/db -d --network=your_network mongo
 ``` 
 Then, you can use spiders to crawl stock data by following code:   
 ```
-docker run -t -v local_project_dir:docker_project_dir --network=your_network ceruleanwang/haru spider/stock_spider.py
+docker run -t -v local_project_dir:docker_project_dir --network=your_network ceruleanwang/personae spider/stock_spider.py
 ```
 Also, you can crawl future data by following code:
 ```
-docker run -t -v local_project_dir:docker_project_dir --network=your_network ceruleanwang/haru spider/future_spider.py
+docker run -t -v local_project_dir:docker_project_dir --network=your_network ceruleanwang/personae spider/future_spider.py
 ```
 But remember to set stock or future codes that you want to crawl, the default stock codes are:
 ```
