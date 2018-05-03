@@ -4,9 +4,9 @@ import pandas as pd
 import numpy as np
 import math
 
-from sklearn.preprocessing import StandardScaler
 from base.env.trader import Trader
 from base.model.document import Stock, Future
+from sklearn.preprocessing import StandardScaler
 
 
 class Market(object):
@@ -80,9 +80,9 @@ class Market(object):
             self.use_normalized = True
 
         try:
-            self.use_state_mix_cash = options['state_mix_cash']
+            self.mix_trader_state = options['mix_trader_state']
         except KeyError:
-            self.use_state_mix_cash = True
+            self.mix_trader_state = True
 
         try:
             self.seq_length = options['seq_length']
@@ -243,7 +243,7 @@ class Market(object):
     def _scaled_data_as_state(self, date):
         if not self.use_sequence:
             data = self.data_x[self.dates.index(date)]
-            if self.use_state_mix_cash:
+            if self.mix_trader_state:
                 trader_state = self.trader.scaled_data_as_state()
                 data = np.insert(data, -1, trader_state).reshape((1, -1))
             return data
@@ -336,7 +336,7 @@ class Market(object):
         else:
             if self.use_one_hot:
                 data_dim = self.code_count * self.scaled_frames[self.codes[0]].shape[1]
-                if self.use_state_mix_cash:
+                if self.mix_trader_state:
                     data_dim += (2 + self.code_count)
             else:
                 data_dim = self.code_count * self.scaled_frames[self.codes[0]].shape[1]
