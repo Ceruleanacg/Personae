@@ -8,7 +8,8 @@ def launch_model():
     # Spider name.
     spider_name = 'stock'
     # Codes.
-    codes = stock_codes
+    # codes = stock_codes
+    codes = ['sh']
     # Start date.
     start = "2008-01-01"
     # End date.

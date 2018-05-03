@@ -23,7 +23,12 @@ class StockSpider(object):
         logging.warning("Finish crawling code: {}, items count: {}".format(self.code, stock_frame.shape[0]))
 
 
-if __name__ == '__main__':
-    args = stock_spider_parser.parse_args()
-    for _code in args.codes:
+def main(args):
+    codes = args.codes
+    # codes = ['sh']
+    for _code in codes:
         StockSpider(_code, args.start, args.end).crawl()
+
+
+if __name__ == '__main__':
+    main(stock_spider_parser.parse_args())
