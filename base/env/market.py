@@ -18,6 +18,8 @@ class Market(object):
 
         # Initialize codes.
         self.codes = codes
+        self.index_codes = []
+        self.state_codes = []
 
         # Initialize dates.
         self.dates = []
@@ -70,11 +72,6 @@ class Market(object):
             self.use_sequence = False
 
         try:
-            self.use_one_hot = options['use_one_hot']
-        except KeyError:
-            self.use_one_hot = True
-
-        try:
             self.use_normalized = options['use_normalized']
         except KeyError:
             self.use_normalized = True
@@ -83,6 +80,14 @@ class Market(object):
             self.mix_trader_state = options['mix_trader_state']
         except KeyError:
             self.mix_trader_state = True
+
+        try:
+            self.mix_index_state = options['mix_index_state']
+        except KeyError:
+            self.mix_index_state = False
+        finally:
+            if self.mix_index_state:
+                self.index_codes.append('sh')
 
         try:
             self.seq_length = options['seq_length']
@@ -101,8 +106,8 @@ class Market(object):
         except KeyError:
             scaler = StandardScaler
 
-        self.scaler = [scaler() for _ in self.codes]
-
+        self.state_codes = self.codes + self.index_codes
+        self.scaler = [scaler() for _ in self.state_codes]
         self.trader = Trader(self, cash=self.init_cash)
         self.doc_class = Stock if self.m_type == 'stock' else Future
 
@@ -111,21 +116,20 @@ class Market(object):
         self._init_env_data()
         self._init_data_indices()
 
-    def _remove_invalid_codes(self):
-        if not len(self.codes):
-            raise ValueError("Fatal error, odes cannot be empty.")
-        valid_codes = [code for code in self.codes if self.doc_class.exist_in_db(code)]
-        if not len(valid_codes):
-            raise ValueError("Fatal error, no valid codes in database.")
-        self.codes = valid_codes
+    def _validate_codes(self):
+        if not self.state_code_count:
+            raise ValueError("Codes cannot be empty.")
+        for code in self.state_codes:
+            if not self.doc_class.exist_in_db(code):
+                raise ValueError("Code: {} not exists in database.".format(code))
 
     def _init_data_frames(self, start_date, end_date):
         # Remove invalid codes first.
-        self._remove_invalid_codes()
+        self._validate_codes()
         # Init columns and data set.
         columns, dates_set = ['open', 'high', 'low', 'close', 'volume'], set()
         # Load data.
-        for index, code in enumerate(self.codes):
+        for index, code in enumerate(self.state_codes):
             # Load instrument docs by code.
             instrument_docs = self.doc_class.get_k_data(code, start_date, end_date)
             # Init instrument dicts.
@@ -148,7 +152,7 @@ class Market(object):
         # Init date iter.
         self.dates = sorted(list(dates_set))
         # Rebuild index.
-        for code in self.codes:
+        for code in self.state_codes:
             origin_frame = self.origin_frames[code]
             scaled_frame = self.scaled_frames[code]
             self.origin_frames[code] = origin_frame.reindex(self.dates, method='bfill')
@@ -169,13 +173,11 @@ class Market(object):
         scaled_data_x, scaled_data_y = [], []
         for index, date in enumerate(self.dates[: -1]):
             # Get current x, y.
-            x = [self.scaled_frames[code].iloc[index] for code in self.codes]
-            y = [self.scaled_frames[code].iloc[index + 1] for code in self.codes]
+            x = [self.scaled_frames[code].iloc[index] for code in self.state_codes]
+            y = [self.scaled_frames[code].iloc[index + 1] for code in self.state_codes]
             # Convert x, y to array.
-            x = np.array(x)
+            x = np.array(x).reshape((1, -1))
             y = np.array(y)
-            if self.use_one_hot:
-                x = y.reshape((1, -1))
             # Append x, y
             scaled_data_x.append(x)
             scaled_data_y.append(y)
@@ -196,7 +198,7 @@ class Market(object):
             if date_index < self.seq_length:
                 continue
             data_x, data_y = [], []
-            for code in self.codes:
+            for code in self.state_codes:
                 # Get scaled frame by code.
                 scaled_frame = self.scaled_frames[code]
                 # Get instrument data x.
@@ -329,15 +331,17 @@ class Market(object):
         return len(self.codes)
 
     @property
+    def index_code_count(self):
+        return len(self.index_codes)
+
+    @property
+    def state_code_count(self):
+        return len(self.state_codes)
+
+    @property
     def data_dim(self):
-        if self.use_sequence:
-            data_dim = self.code_count * self.scaled_frames[self.codes[0]].shape[1]
-            return data_dim
-        else:
-            if self.use_one_hot:
-                data_dim = self.code_count * self.scaled_frames[self.codes[0]].shape[1]
-                if self.mix_trader_state:
-                    data_dim += (2 + self.code_count)
-            else:
-                data_dim = self.code_count * self.scaled_frames[self.codes[0]].shape[1]
-            return data_dim
+        data_dim = self.state_code_count * self.scaled_frames[self.codes[0]].shape[1]
+        if not self.use_sequence:
+            if self.mix_trader_state:
+                data_dim += (2 + self.code_count)
+        return data_dim

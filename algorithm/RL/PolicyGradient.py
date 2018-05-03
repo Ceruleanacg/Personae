@@ -56,7 +56,7 @@ class Algorithm(BaseRLTFModel):
 
             action_prob = tf.layers.dense(second_dense,
                                           self.a_space,
-                                          tf.nn.tanh,
+                                          # tf.nn.tanh,
                                           kernel_initializer=w_init,
                                           bias_initializer=b_init)
 
@@ -70,7 +70,7 @@ class Algorithm(BaseRLTFModel):
             negative_cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(logits=self.a_prob, labels=self.a)
             self.loss_fn = tf.reduce_mean(negative_cross_entropy * self.r)
         with tf.variable_scope('train'):
-            self.train_op = tf.train.RMSPropOptimizer(self.learning_rate * 2).minimize(self.loss_fn)
+            self.train_op = tf.train.AdamOptimizer(self.learning_rate * 2).minimize(self.loss_fn)
         self.session.run(tf.global_variables_initializer())
 
     def run(self):
@@ -117,8 +117,8 @@ class Algorithm(BaseRLTFModel):
 
 
 def main(args):
-    # mode = args.mode
-    mode = 'test'
+    mode = args.mode
+    # mode = 'test'
     codes = args.codes
     # codes = ["AU88", "RB88", "CU88", "AL88"]
     # codes = ["T9999"]
@@ -133,7 +133,7 @@ def main(args):
 
     env = Market(codes, start_date="2012-01-01", end_date="2018-01-01", **{
         "market": market,
-        # "use_sequence": True,
+        "mix_index_state": True,
         "logger": generate_market_logger(model_name),
         "training_data_ratio": training_data_ratio,
     })
