@@ -1,3 +1,8 @@
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](/LICENSE)
+[![Platform](https://img.shields.io/badge/Platform-Tensorflow-orange.svg)](https://www.tensorflow.org/)
+[![Python](https://img.shields.io/badge/Python-3.5-red.svg)]()
+[![Docker](https://img.shields.io/badge/Docker-Available-FF69B4.svg)](https://hub.docker.com/r/ceruleanwang/personae/)
+
 # Personae - RL & SL Methods and Envs For Quantitative Trading
 
 Personae is a repo that implements papers proposed methods in Deep Reinforcement Learning & Supervised Learning and applies them to Financial Market.
