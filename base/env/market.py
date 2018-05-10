@@ -198,20 +198,21 @@ class Market(object):
             if date_index < self.seq_length:
                 continue
             data_x, data_y = [], []
-            for code in self.state_codes:
+            for index, code in enumerate(self.state_codes):
                 # Get scaled frame by code.
                 scaled_frame = self.scaled_frames[code]
                 # Get instrument data x.
                 instruments_x = scaled_frame.iloc[date_index - self.seq_length: date_index]
-                # Get instrument data y.
-                if date_index < self.bound_index:
-                    # Get y, y is not at date index, but plus 1. (Training Set)
-                    instruments_y = scaled_frame.iloc[date_index + 1]['close']
-                else:
-                    # Get y, y is at date index. (Test Set)
-                    instruments_y = scaled_frame.iloc[date_index]['close']
                 data_x.append(np.array(instruments_x))
-                data_y.append(np.array(instruments_y))
+                # Get instrument data y.
+                if index < self.state_code_count - 1:
+                    if date_index < self.bound_index:
+                        # Get y, y is not at date index, but plus 1. (Training Set)
+                        instruments_y = scaled_frame.iloc[date_index + 1]['close']
+                    else:
+                        # Get y, y is at date index. (Test Set)
+                        instruments_y = scaled_frame.iloc[date_index + 1]['close']
+                    data_y.append(np.array(instruments_y))
             # Convert list to array.
             data_x = np.array(data_x)
             data_y = np.array(data_y)
@@ -301,13 +302,13 @@ class Market(object):
         self.trader.action_times += 1
         # Update date if need.
         if self.trader.action_times == self.code_count:
-            self.trader.action_times = 0
+            self._update_profits_and_baseline()
             try:
                 self.current_date, self.next_date = self.next_date, next(self.iter_dates)
             except StopIteration:
                 episode_done = self.Done
             finally:
-                self._update_profits_and_baseline()
+                self.trader.action_times = 0
         # Get next state.
         state_next = self._scaled_data_as_state(self.current_date)
         # Return s_n, r, d, info.
@@ -315,8 +316,10 @@ class Market(object):
 
     def _update_profits_and_baseline(self):
         prices = [self._origin_data(code, self.current_date).close for code in self.codes]
-        self.trader.history_baselines.append(np.sum(np.multiply(self.stocks_holding_baseline, prices)))
-        self.trader.history_profits.append(self.trader.profits + self.trader.initial_cash)
+        baseline_profits = np.dot(self.stocks_holding_baseline, np.transpose(prices)) - self.trader.initial_cash
+        policy_profits = self.trader.profits
+        self.trader.history_baselines.append(baseline_profits)
+        self.trader.history_profits.append(policy_profits)
 
     def _reset_baseline(self):
         # Calculate cash piece.

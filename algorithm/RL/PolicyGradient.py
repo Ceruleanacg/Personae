@@ -43,16 +43,22 @@ class Algorithm(BaseRLTFModel):
         with tf.variable_scope('nn'):
 
             first_dense = tf.layers.dense(self.s,
-                                          32,
+                                          64,
                                           tf.nn.relu,
                                           kernel_initializer=w_init,
                                           bias_initializer=b_init)
 
             second_dense = tf.layers.dense(first_dense,
-                                           32,
+                                           64,
                                            tf.nn.relu,
                                            kernel_initializer=w_init,
                                            bias_initializer=b_init)
+
+            # third_dense = tf.layers.dense(second_dense,
+            #                               64,
+            #                               tf.nn.relu,
+            #                               kernel_initializer=w_init,
+            #                               bias_initializer=b_init)
 
             action_prob = tf.layers.dense(second_dense,
                                           self.a_space,
@@ -119,15 +125,17 @@ class Algorithm(BaseRLTFModel):
 def main(args):
     mode = args.mode
     # mode = 'test'
-    codes = args.codes
+    # codes = args.codes
+    codes = ["600036"]
+    # codes = ["600036", "601998"]
     # codes = ["AU88", "RB88", "CU88", "AL88"]
     # codes = ["T9999"]
     market = args.market
     # market = 'future'
-    episode = args.episode
-    # episode = 2000
-    # training_data_ratio = 0.5
-    training_data_ratio = args.training_data_ratio
+    # episode = args.episode
+    episode = 20
+    training_data_ratio = 0.95
+    # training_data_ratio = args.training_data_ratio
 
     model_name = os.path.basename(__file__).split('.')[0]
 
