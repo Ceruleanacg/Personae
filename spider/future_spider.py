@@ -44,7 +44,7 @@ if __name__ == '__main__':
     config = {
         "base": {
             "start_date": "2018-01-01",
-            "end_date": "20018-01-02",
+            "end_date": "2018-01-02",
             "benchmark": "AU88",
             "accounts": {
                 "future": 100000
