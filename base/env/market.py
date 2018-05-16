@@ -205,7 +205,7 @@ class Market(object):
                 instruments_x = scaled_frame.iloc[date_index - self.seq_length: date_index]
                 data_x.append(np.array(instruments_x))
                 # Get instrument data y.
-                if index < self.state_code_count - 1:
+                if index < date_index - 1:
                     if date_index < self.bound_index:
                         # Get y, y is not at date index, but plus 1. (Training Set)
                         instruments_y = scaled_frame.iloc[date_index + 1]['close']
