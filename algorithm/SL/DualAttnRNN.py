@@ -79,12 +79,15 @@ class Algorithm(BaseSLTFModel):
 
 
 def main(args):
-    # mode = args.mode
-    mode = "test"
-    codes = args.codes
+    mode = args.mode
+    # mode = "test"
+    codes = ["600036"]
+    # codes = ["600036", "601998"]
+    # codes = args.codes
     # codes = ["AU88", "RB88", "CU88", "AL88"]
     market = args.market
-    train_steps = args.train_steps
+    # train_steps = args.train_steps
+    train_steps = 30000
     # training_data_ratio = 0.98
     training_data_ratio = args.training_data_ratio
 
@@ -92,6 +95,7 @@ def main(args):
         "market": market,
         "use_sequence": True,
         "scaler": MinMaxScaler,
+        "mix_index_state": True,
         "training_data_ratio": training_data_ratio,
     })
 

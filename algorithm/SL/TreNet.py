@@ -50,7 +50,7 @@ class Algorithm(BaseSLTFModel):
             self.loss = tf.losses.mean_squared_error(self.y, self.label)
         with tf.variable_scope('train'):
             self.global_step = tf.Variable(0, trainable=False)
-            self.optimizer = tf.train.RMSPropOptimizer(self.learning_rate)
+            self.optimizer = tf.train.AdamOptimizer(self.learning_rate)
             self.train_op = self.optimizer.minimize(self.loss)
         self.session.run(tf.global_variables_initializer())
 
@@ -74,19 +74,21 @@ class Algorithm(BaseSLTFModel):
 
 def main(args):
 
-    mode = args.mode
-    # mode = "test"
-    codes = args.codes
+    # mode = args.mode
+    mode = "test"
+    # codes = args.codes
+    codes = ["600036"]
     # codes = ["AU88", "RB88", "CU88", "AL88"]
     market = args.market
     train_steps = args.train_steps
-    # training_data_ratio = 0.98
-    training_data_ratio = args.training_data_ratio
+    training_data_ratio = 0.98
+    # training_data_ratio = args.training_data_ratio
 
-    env = Market(codes, start_date="2008-01-01", end_date="2018-01-01", **{
+    env = Market(codes, start_date="2012-01-01", end_date="2018-01-01", **{
         "market": market,
         "use_sequence": True,
         "scaler": MinMaxScaler,
+        "mix_index_state": True,
         "training_data_ratio": training_data_ratio,
     })
 
