@@ -99,12 +99,19 @@ class Algorithm(BaseRLTFModel):
                     self.save(episode)
 
     def train(self):
+        # Copy r_buffer
+        r_buffer = self.r_buffer
+        # Init r_tau
+        r_tau = 0
+        # Calculate r_tau
+        for index in reversed(range(0, len(r_buffer))):
+            r_tau = r_tau * self.gamma + r_buffer[index]
+            self.r_buffer[index] = r_tau
         _, self.loss = self.session.run([self.train_op, self.loss_fn], {
             self.s: np.array(self.s_buffer),
             self.a: np.array(self.a_buffer),
             self.r: np.array(self.r_buffer)
         })
-
         self.s_buffer = []
         self.a_buffer = []
         self.r_buffer = []
@@ -133,7 +140,7 @@ def main(args):
     market = args.market
     # market = 'future'
     # episode = args.episode
-    episode = 20
+    episode = 1000
     training_data_ratio = 0.95
     # training_data_ratio = args.training_data_ratio
 
@@ -141,7 +148,7 @@ def main(args):
 
     env = Market(codes, start_date="2012-01-01", end_date="2018-01-01", **{
         "market": market,
-        "mix_index_state": True,
+        "mix_index_state": False,
         "logger": generate_market_logger(model_name),
         "training_data_ratio": training_data_ratio,
     })
