@@ -11,6 +11,11 @@ Now Personae includes 4 RL & 3 SL implements and a simulate Financial Market sup
 
 More RL & SL methods are updating!
 
+# Attentions  
+
+- The features as inputs are naive.   
+- Day frequency is clearly not enough.  
+
 # Contents
 
 + [Deep Deterministic Policy Gradient (DDPG)](algorithm/RL/DDPG.py)   
