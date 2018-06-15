@@ -15,6 +15,7 @@ More RL & SL methods are updating!
 
 - The features as inputs are naive.   
 - Day frequency is clearly not enough.  
+- It's recommended that you could replace the features here to your own.   
 
 # Contents
 
