@@ -11,6 +11,10 @@ Now Personae includes 4 RL & 3 SL implements and a simulate Financial Market sup
 
 More RL & SL methods are updating!
 
+# WARNING
+
+This repo is being reconstructing.
+
 # Attentions  
 
 - The features as inputs are naive.   
