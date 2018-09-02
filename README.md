@@ -15,7 +15,9 @@ More RL & SL methods are updating!
 
 This repo is being reconstructing,
 
-It will start from 2018-08-24 to 2018-09-01.
+It will start from 2018-08-24 to ~2018-09-01~ a timestamp that I successfully found a job.
+
+
 
 # Attentions  
 
