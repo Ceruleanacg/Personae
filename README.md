@@ -124,7 +124,7 @@ The image [ceruleanwang/quant-base](https://hub.docker.com/r/ceruleanwang/quant-
 #### Instructions
 First you should make sure you have stocks data in your mongodb.   
 
-If you don't have, you can use a spider writen in this repo to crawl stock or future data, but before you start, you should make sure a mongodb service is running.  
+If you don't have, you can use a spider written in this repo to crawl stock or future data, but before you start, you should make sure a mongodb service is running.  
 
 If you don't have mongodb service running, you can also use a mongodb container (option) by following code:
 ```
